@@ -17,21 +17,29 @@
 %
 % R. Waasdorp, 19-03-2025
 
-function rays(rays)
+function rays(rays, plot_normals, plot_true_refraction)
 
-    rt.plot.plot_point(rays(1).start.' * 1e3, 'bx');
+    if ~exist('plot_normals','var'); plot_normals = 0; end
+    if ~exist('plot_true_refraction','var'); plot_true_refraction = 0; end
+
+    ray_opts = {'color','k','linewidth',1.2};
+    normal_opts = {'b', 'linewidth',3};
+    scat_opts = {20,'ko','filled'};
+
+    rt.plot.plot_point(rays(1).start.' * 1e3, scat_opts{:});
     for k = 1:numel(rays)
         ray = rays(k);
         if ray.hit_idx == -1; break; end
-        rt.plot.plot_ray(ray.start * 1e3, ray.length * 1e3 * ray.dir, 'r');
-        if k < numel(rays)
+        rt.plot.plot_ray(ray.start * 1e3, ray.length * 1e3 * ray.dir, ray_opts{:});
+        if k < numel(rays) && plot_true_refraction
             rt.plot.plot_ray(rays(k + 1).start * 1e3, ...
-                rays(k + 1).length * 1e3 * ray.dir_refracted, 'b', 'linewidth',1.5);
+                rays(k + 1).length * 1e3 * ray.dir_refracted, normal_opts{:});
         end
-        rt.plot.plot_point(ray.intersection.' * 1e3, 'bx');
+        rt.plot.plot_point(ray.intersection.' * 1e3, scat_opts{:});
 
-        % rt.plot.plot_ray(ray.intersection*1e3,  ray.normal, 'k-');
-        % rt.plot.plot_ray(ray.intersection*1e3,  -ray.normal, 'k-');
-        rt.plot.plot_vec(ray.intersection * 1e3 -ray.normal, ray.intersection * 1e3 +ray.normal, 'k-');
+        if plot_normals
+            rt.plot.plot_vec(ray.intersection * 1e3 -ray.normal, ...
+                ray.intersection * 1e3 +ray.normal, normal_opts{:});
+        end
     end
 end
