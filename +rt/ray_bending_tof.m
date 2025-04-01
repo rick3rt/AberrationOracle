@@ -33,7 +33,8 @@ function [tof, ray] = ray_bending_tof(theta, x_start, z_start, x_target, z_targe
             break; % if we reach the target layer
         end
         % if ray points upwards, break
-        % if (ray(k).dir(2) < 0); tof = 1e10 + theta; return; end      
+        if (ray(k).dir(2) < 0); tof = 1e10 + theta; return; end      
+        
         ray(k) = traverse_fun(ray(k), BFC);
     end
 
@@ -49,6 +50,7 @@ function [tof, ray] = ray_bending_tof(theta, x_start, z_start, x_target, z_targe
     ray(k).normal = [NaN; NaN];
     ray(k).dir_refracted = [NaN; NaN];
     ray(k).dir = tmp ./ ray(k).length;
+     
 
     % compute tof
     tof = sum([ray(1:to_layer).length] ./ BFC.medium_soundspeeds(1:to_layer));

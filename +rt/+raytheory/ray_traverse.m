@@ -30,7 +30,7 @@ function ray = ray_traverse_spline(ray, BFC)
                 if any(isnan(p_ray)); ray.length = inf; return; end
                 p_test = poly_comb(p_ray, sp_test);
                 x_intersect = poly_roots_valid(p_test, ray);
-                % if numel(x_intersect) == 0; continue; end
+                if numel(x_intersect) == 0; ray.length = inf; return; end
             end
             z_intersect = polyval(p_ray, x_intersect);
         end
