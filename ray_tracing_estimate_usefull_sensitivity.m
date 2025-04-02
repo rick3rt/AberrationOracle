@@ -29,8 +29,6 @@ ke = 64;
 P.x_source = P.x_piezo(ke);
 P.z_source = P.z_piezo(ke);
 
-
-
 P.x_pixel = 0; % center of image
 P.z_pixel = P.lens_thickness + P.distance_trans_bone + P.bone_thickness + P.distance_bone_pixel;
 
@@ -125,8 +123,8 @@ title('Relative improvement (peak AC / NC)')
 %%
 
 ac_res = [metrics.ac_res_x];
-nc_res= [metrics.nc_res_x];
-imp = [nc_res./ac_res];
+nc_res = [metrics.nc_res_x];
+imp = [nc_res ./ ac_res];
 
 f = figure(101); clf;
 f.Position = [400 150 600 800];
@@ -142,10 +140,9 @@ yticklabels({P_all.name})
 set(gca, 'YDir', 'reverse')
 title('Relative improvement Resolution (peak AC / NC)')
 
-
 ac_res = [metrics.ac_IQ_x_peak];
-nc_res= [metrics.nc_IQ_x_peak];
-imp = [nc_res./ac_res];
+nc_res = [metrics.nc_IQ_x_peak];
+imp = [nc_res ./ ac_res];
 
 f = figure(102); clf;
 f.Position = [400 150 600 800];
@@ -160,9 +157,6 @@ barh(imp.')
 yticklabels({P_all.name})
 set(gca, 'YDir', 'reverse')
 title('Relative improvement Peak internsity (BFd)')
-
-
-
 
 return
 
@@ -369,10 +363,9 @@ end
 %     % time_remaining_progbar_ui(kz, Nz)
 % end
 
-% determine resolution. 
+% determine resolution.
 [w_ac, y50_ac, x1_ac, x2_ac] = fwhm2(xvec * 1e3, abs(IQ_xax_ac));
 [w_nc, y50_nc, x1_nc, x2_nc] = fwhm2(xvec * 1e3, abs(IQ_xax_nc));
-
 
 cmap = lines(2);
 
@@ -382,10 +375,10 @@ hold on
 plot(xvec * 1e3, abs(IQ_xax_ac))
 legend('NC', 'AC')
 
-plot([x1_nc x2_nc], [y50_nc y50_nc],'Color',cmap(1,:),'HandleVisibility','off')
-plot([x1_ac x2_ac], [y50_ac y50_ac],'Color',cmap(2,:),'HandleVisibility','off')
+plot([x1_nc x2_nc], [y50_nc y50_nc], 'Color', cmap(1, :), 'HandleVisibility', 'off')
+plot([x1_ac x2_ac], [y50_ac y50_ac], 'Color', cmap(2, :), 'HandleVisibility', 'off')
 
-title(sprintf('Lateral Resolution - NC: %.3f mm  - AC: %.3f mm',w_nc , w_ac))
+title(sprintf('Lateral Resolution - NC: %.3f mm  - AC: %.3f mm', w_nc, w_ac))
 
 % end
 
@@ -419,34 +412,31 @@ plot([Pdebug.x_piezo(out.nc_f_number_idx(1)) Pdebug.x_pixel] * 1e3, [Pdebug.z_pi
 plot([Pdebug.x_piezo(out.nc_f_number_idx(end)) Pdebug.x_pixel] * 1e3, [Pdebug.z_piezo(out.nc_f_number_idx(end)) Pdebug.z_pixel] * 1e3, 'k--')
 plot([Pdebug.x_source Pdebug.x_pixel] * 1e3, [Pdebug.z_source Pdebug.z_pixel] * 1e3, 'k--')
 
-
-
 % rt.plot.rays(out.ac_rays_rx{64}, 0, 0);
 
 %
-  % ray tracing from source to pixel, and pixel to all elements
-    % ===========================================================
-    % to_layer = 4; % trace to brain layer
-    % [rays_tx, tof_tx, theta_tx] = rt.ray_bending(P.x_source, P.z_source, P.x_pixel, P.z_pixel, BFC, to_layer);
+% ray tracing from source to pixel, and pixel to all elements
+% ===========================================================
+% to_layer = 4; % trace to brain layer
+% [rays_tx, tof_tx, theta_tx] = rt.ray_bending(P.x_source, P.z_source, P.x_pixel, P.z_pixel, BFC, to_layer);
 
-    tof_rx_all = zeros(1, P.num_elements);
-    theta_rx_all = zeros(1, P.num_elements);
-    rays_rx_all = cell(1, P.num_elements);
-    %for ke = 1:P.num_elements
-    ke = 64;
-        x_end = P.x_piezo(ke);
-        z_end = P.z_piezo(ke);
-        [rays_rx, tof_rx, theta_rx] = rt.ray_bending(x_end, z_end, P.x_pixel, P.z_pixel, BFC, to_layer);
-        tof_rx_all(ke) = tof_rx;
-        theta_rx_all(ke) = theta_rx;
-        rays_rx_all{ke} = rays_rx;
-    %end
+tof_rx_all = zeros(1, P.num_elements);
+theta_rx_all = zeros(1, P.num_elements);
+rays_rx_all = cell(1, P.num_elements);
+%for ke = 1:P.num_elements
+ke = 64;
+x_end = P.x_piezo(ke);
+z_end = P.z_piezo(ke);
+[rays_rx, tof_rx, theta_rx] = rt.ray_bending(x_end, z_end, P.x_pixel, P.z_pixel, BFC, to_layer);
+tof_rx_all(ke) = tof_rx;
+theta_rx_all(ke) = theta_rx;
+rays_rx_all{ke} = rays_rx;
+%end
 
-    ind_valid = find(~isnan(tof_rx_all)); % valid rays in reception.
-    tof_round_trip = tof_tx + tof_rx_all;
+ind_valid = find(~isnan(tof_rx_all)); % valid rays in reception.
+tof_round_trip = tof_tx + tof_rx_all;
 
 rt.plot.rays(rays_rx, 0, 0);
-
 
 cost_fun = @(theta) rt.ray_bending_tof(theta, x_end, z_end, P.x_pixel, P.z_pixel, BFC, to_layer);
 cost_fun(theta_rx)

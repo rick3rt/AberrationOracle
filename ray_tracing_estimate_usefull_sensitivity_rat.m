@@ -37,22 +37,21 @@ P.f_number = 1.5;
 % xax = linspace(-P.num_elements * P.lambda, P.num_elements * P.lambda, 100); %
 % P.bone_outer_surface = (P.lens_thickness + P.distance_trans_bone) + P.bone_curvature * xax .^ 2;
 % P.bone_inner_surface = (P.lens_thickness + P.distance_trans_bone + P.bone_thickness) + P.bone_curvature * xax .^ 2;
- 
+
 P.name = 'default';
 zpix_fun = @(P) P.lens_thickness + P.distance_trans_bone + P.bone_thickness + P.distance_bone_pixel;
 
-% Run and show results 
+% Run and show results
 [out, BFC] = rt_compare(P);
 figs = rt_compare_plot(P, out, BFC);
 metrics = rt_test_improvement(P, out, BFC);
 
-% return 
+% return
 
 %% Determine new parameter sets
 
-n = 1; 
+n = 1;
 P_all = P;
-
 
 Pn = P; n = n + 1;
 Pn.name = 'dist tranducer-bone +10L';
@@ -71,7 +70,7 @@ P_all(n) = Pn;
 
 Pn = P; n = n + 1;
 Pn.name = 'thicker bone (1.5x)';
-Pn.bone_thickness = 1.5*P.bone_thickness;
+Pn.bone_thickness = 1.5 * P.bone_thickness;
 P_all(n) = Pn;
 
 Pn = P; n = n + 1;
@@ -79,26 +78,23 @@ Pn.name = 'f-number 2';
 Pn.f_number = 2;
 P_all(n) = Pn;
 
-
 for k = 1:numel(P_all)
     P_all(k).z_pixel = zpix_fun(P_all(k));
 end
 
-
-%% Run for all; 
+%% Run for all;
 
 output_folder = 'figs';
 [~, ~] = mkdir(output_folder);
-save_fig_fun = @(f) exportgraphics(f, fullfile(output_folder, [strrep(f.Name,' ','_') '.png']), 'Resolution', 300);
+save_fig_fun = @(f) exportgraphics(f, fullfile(output_folder, [strrep(f.Name, ' ', '_') '.png']), 'Resolution', 300);
 save_figs_fun = @(fc) cellfun(save_fig_fun, fc);
-
 
 for k = 1:numel(P_all)
     Ptest = P_all(k);
     [out, BFC] = rt_compare(Ptest);
     figs = rt_compare_plot(Ptest, out, BFC);
     metrics(k) = rt_test_improvement(P, out, BFC, false);
-   
+
     % save_figs_fun(figs)
 end
 
@@ -107,18 +103,18 @@ ac_peak = [metrics.ac_peak];
 nc_peak = [metrics.nc_peak];
 imp = [metrics.improvement];
 
-f = figure(100);clf;
+f = figure(100); clf;
 f.Position = [400 150 600 800];
 subplot(211)
-barh([nc_peak;ac_peak].')
+barh([nc_peak; ac_peak].')
 yticklabels({P_all.name})
-set(gca,'YDir','reverse')
-legend('No Correction', 'Aberration Corrected', 'Orientation','horizontal',...
- 'Location','northoutside')
+set(gca, 'YDir', 'reverse')
+legend('No Correction', 'Aberration Corrected', 'Orientation', 'horizontal', ...
+    'Location', 'northoutside')
 subplot(212)
 barh(imp.')
 yticklabels({P_all.name})
-set(gca,'YDir','reverse')
+set(gca, 'YDir', 'reverse')
 title('Relative improvement (peak AC / NC)')
 
-return 
+return
