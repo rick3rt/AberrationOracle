@@ -21,7 +21,7 @@ function ray = ray_traverse_spline(ray, BFC)
             z_intersect = ppval(sp_test, x_intersect);
         else
             slope = ray.dir(2) ./ ray.dir(1);
-            if isinf(slope)
+            if isnearinf(slope)
                 x_intersect = ray.start(1);
                 p_ray = sp_test; % 
             else
@@ -72,4 +72,8 @@ function ray = ray_traverse_spline(ray, BFC)
         ray.critical_angle = 1;
     end
 
+end
+
+function val = isnearinf(slope)
+    val = abs(slope) > 1e16;
 end

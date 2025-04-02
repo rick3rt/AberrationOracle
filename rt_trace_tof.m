@@ -24,12 +24,16 @@ function [tof_ac, tof_nc] = rt_trace_tof(P, BFC, xp, zp)
     % calculate time of flight for homogenous medium
     % ===========================================================
     c0 = 1540;
-    tof_round_trip_c0 = vecnorm([xp;zp] - [P.x_source; P.z_source]) / c0 + ...
-        vecnorm([P.x_piezo; P.z_piezo] - [xp;zp]) / c0;
+    delta_tof_nc = (1/P.bone_wavespeed - 1/1540)*P.bone_thickness;
+    dz = delta_tof_nc*c0;
+    
+    vec_pixel = [xp; zp+dz];
 
-    rx_vec = [xp;zp] - [P.x_piezo; P.z_piezo];
+    tof_round_trip_c0 = vecnorm(vec_pixel  - [P.x_source; P.z_source]) / c0 + ...
+        vecnorm([P.x_piezo; P.z_piezo] - vec_pixel) / c0;
+
+    rx_vec = vec_pixel - [P.x_piezo; P.z_piezo];
     theta_rx_all_c0 = atan2(rx_vec(2, :), rx_vec(1, :)) - pi / 2;
-
 
     % mask outside f-number
     % half opening angle corresponding to f-number
