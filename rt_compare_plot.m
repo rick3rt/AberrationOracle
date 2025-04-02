@@ -1,9 +1,11 @@
 function f_all = rt_compare_plot(P, out, BFC)
 
-
     f_all = {};
     cmap_lines = lines(2);
     
+    % rays in speed of sound map
+    % ===========================================================
+
     f = figure(2); clf;
     f.Name = sprintf('rays_%s', P.name);
     f.Position = [100 300 400 600];
@@ -11,19 +13,20 @@ function f_all = rt_compare_plot(P, out, BFC)
     rt.plot.medium(BFC)
     set(gca, 'YDir', 'reverse')
     rt.plot.rays(out.ac_rays_tx);
-    rt.plot.rays(out.ac_rays_rx{out.ac_valid_ray_idx(1)});
-    rt.plot.rays(out.ac_rays_rx{out.ac_valid_ray_idx(end)});
+    rt.plot.rays(out.ac_rays_rx{out.ac_f_number_idx(1)});
+    rt.plot.rays(out.ac_rays_rx{out.ac_f_number_idx(end)});
     daspect([1 1 1])
     xlim(rt.util.minmax(BFC.XRecon) * 1e3); ylim(rt.util.minmax(BFC.ZRecon) * 1e3)
     
-    % plot homogeneous
-    plot([P.x_piezo(out.ac_valid_ray_idx(1)) P.x_pixel]*1e3, [P.z_piezo(out.ac_valid_ray_idx(1)) P.z_pixel]*1e3, 'k--')
-    plot([P.x_piezo(out.ac_valid_ray_idx(end)) P.x_pixel]*1e3, [P.z_piezo(out.ac_valid_ray_idx(end)) P.z_pixel]*1e3, 'k--')
+    % plot homogeneous paths
+    plot([P.x_piezo(out.nc_f_number_idx(1)) P.x_pixel]*1e3, [P.z_piezo(out.nc_f_number_idx(1)) P.z_pixel]*1e3, 'k--')
+    plot([P.x_piezo(out.nc_f_number_idx(end)) P.x_pixel]*1e3, [P.z_piezo(out.nc_f_number_idx(end)) P.z_pixel]*1e3, 'k--')
     plot([P.x_source P.x_pixel]*1e3, [P.z_source P.z_pixel]*1e3, 'k--')
     
     f_all{end+1} = f;
 
     % plot error relative to wave period
+    % ===========================================================
     f = figure(3);clf;
     f.Name = sprintf('error_%s', P.name);
     f.Position = [500 300 400 600];

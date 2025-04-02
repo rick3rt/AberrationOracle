@@ -2,18 +2,15 @@ function [tof, ray] = ray_bending_tof(theta, x_start, z_start, x_target, z_targe
 
     % log_info = @(fmt, varargin) fprintf(['[%s] ' fmt], mfilename, varargin{:});
     log_info = @(varargin) [];
-    
-    log_info('[ENTER] theta %.3f to_layer %i\n', theta, to_layer);
 
-    
-    traverse_fun = @rt.raytheory.ray_traverse;
+    log_info('[ENTER] theta %.3f to_layer %i\n', theta, to_layer);
 
     % Cast first ray
     ray.critical_angle = 0;
     ray.medium_idx = 1;
     ray.start = [x_start; z_start];
     ray.dir = rt.util.vec_rotate(theta);
-    ray = traverse_fun(ray, BFC);
+    ray = rt.raytheory.ray_traverse(ray, BFC);
 
     if ray.length > 1e6; tof = 1e10 + theta; return; end
     if any(isnan(ray.dir_refracted)); tof = 1e10 + theta; return; end
@@ -28,14 +25,14 @@ function [tof, ray] = ray_bending_tof(theta, x_start, z_start, x_target, z_targe
         ray(k).start = ray(k - 1).intersection;
         ray(k).dir = ray(k - 1).dir_refracted;
 
-        if k == to_layer 
+        if k == to_layer
             log_info('target layer reached k = %i\n', k);
             break; % if we reach the target layer
         end
         % if ray points upwards, break
-        if (ray(k).dir(2) < 0); tof = 1e10 + theta; return; end      
-        
-        ray(k) = traverse_fun(ray(k), BFC);
+        if (ray(k).dir(2) < 0); tof = 1e10 + theta; return; end
+
+        ray(k) = rt.raytheory.ray_traverse(ray(k), BFC);
     end
 
     if ray(k).medium_idx ~= to_layer % k < to_layer +1
@@ -50,9 +47,19 @@ function [tof, ray] = ray_bending_tof(theta, x_start, z_start, x_target, z_targe
     ray(k).normal = [NaN; NaN];
     ray(k).dir_refracted = [NaN; NaN];
     ray(k).dir = tmp ./ ray(k).length;
-     
 
     % compute tof
     tof = sum([ray(1:to_layer).length] ./ BFC.medium_soundspeeds(1:to_layer));
 
 end
+
+% Rays struct fields:
+%   critical_angle
+%   medium_idx
+%   start
+%   dir
+%   hit_idx
+%   intersection
+%   length
+%   normal
+%   dir_refracted

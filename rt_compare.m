@@ -3,6 +3,7 @@ function [out, BFC] = rt_compare(P)
     % P: parameters struct
 
     % prepare ray tracer
+    % ===========================================================
 
     % define sound speed per layer
     BFC.medium_soundspeeds = [P.lens_wavespeed,
@@ -10,12 +11,17 @@ function [out, BFC] = rt_compare(P)
                               P.bone_wavespeed,
                               P.brain_wavespeed];
 
+    BFC.medium_density = [1.0, 1.0, 1.0, 1.0]; % kg/m^3
+
     % define  interfaces between tissue layers
     BFC.medium_interfaces = {P.lens_thickness,
                              [P.bone_curvature, 0, P.lens_thickness + P.distance_trans_bone],
                              [P.bone_curvature, 0, P.lens_thickness + P.distance_trans_bone + P.bone_thickness]};
 
     BFC.medium_soundspeeds = BFC.medium_soundspeeds(:).'; % guarantee row vector
+    BFC.medium_density = BFC.medium_density(:).'; % guarantee row vector
+    BFC.medium_impendace = BFC.medium_soundspeeds .* BFC.medium_density; % kg/(m^2 s)
+
     BFC.medium_interfaces = BFC.medium_interfaces(:).'; % guarantee row vector
 
     % deremine interface derivatives for normal computation
@@ -29,15 +35,17 @@ function [out, BFC] = rt_compare(P)
     BFC.LensThickness = P.lens_thickness;
 
     % plot the medium
-    figure(1); clf;
-    hold on
-    rt.plot.medium(BFC);
-    scatter(P.x_pixel * 1e3, P.z_pixel * 1e3, 'ko', 'filled');
-    set(gca, 'YDir', 'reverse')
-    daspect([1 1 1])
+    % ===========================================================
+    % figure(1); clf;
+    % hold on
+    % rt.plot.medium(BFC);
+    % scatter(P.x_pixel * 1e3, P.z_pixel * 1e3, 'ko', 'filled');
+    % set(gca, 'YDir', 'reverse')
+    % daspect([1 1 1])
+    % ===========================================================
 
     % ray tracing from source to pixel, and pixel to all elements
-
+    % ===========================================================
     to_layer = 4; % trace to brain layer
     [rays_tx, tof_tx, theta_tx] = rt.ray_bending(P.x_source, P.z_source, P.x_pixel, P.z_pixel, BFC, to_layer);
 
@@ -57,6 +65,7 @@ function [out, BFC] = rt_compare(P)
     tof_round_trip = tof_tx + tof_rx_all;
 
     % calculate time of flight for homogenous medium
+    % ===========================================================
     c0 = 1540;
     tof_round_trip_c0 = vecnorm([P.x_pixel; P.z_pixel] - [P.x_source; P.z_source]) / c0 + ...
         vecnorm([P.x_piezo; P.z_piezo] - [P.x_pixel; P.z_pixel]) / c0;
@@ -76,6 +85,7 @@ function [out, BFC] = rt_compare(P)
     f_number_idx_nc = find(abs(theta_rx_all_c0) < half_opening_angle_rad);
 
     % collect results
+    % ===========================================================
     out.ac_rays_tx = rays_tx;
     out.ac_tof_tx = tof_tx;
     % out.ac_theta_tx = theta_tx; %
