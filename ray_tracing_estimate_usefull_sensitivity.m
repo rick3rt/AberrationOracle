@@ -17,7 +17,7 @@ P.bone_curvature = 0; % 1/m
 
 % distance to bone and pixel
 P.distance_trans_bone = 5 * P.lambda;
-P.distance_bone_pixel = 10 * P.lambda;
+P.distance_bone_pixel = 20 * P.lambda;
 
 % define transducer
 P.num_elements = 128;
@@ -48,7 +48,7 @@ zpix_fun = @(P) P.lens_thickness + P.distance_trans_bone + P.bone_thickness + P.
 % Run and show results
 [out, BFC] = rt_compare(P);
 figs = rt_compare_plot(P, out, BFC);
-[metrics, data] = rt_test_improvement(P, out, BFC, 1);
+[metrics, data] = rt_test_improvement(P, out, BFC, false);
 
 % return
 
@@ -93,12 +93,12 @@ output_folder = 'figs';
 save_fig_fun = @(f) exportgraphics(f, fullfile(output_folder, [strrep(f.Name, ' ', '_') '.png']), 'Resolution', 300);
 save_figs_fun = @(fc) cellfun(save_fig_fun, fc);
 
-
+clear metrics
 for k = 1:numel(P_all)
     Ptest = P_all(k);
     [out, BFC] = rt_compare(Ptest);
     figs = rt_compare_plot(Ptest, out, BFC);
-    metrics(k) = rt_test_improvement(P, out, BFC, 1);
+    metrics(k) = rt_test_improvement(Ptest, out, BFC, 1);
 
     % save_figs_fun(figs)
 end
@@ -121,6 +121,48 @@ barh(imp.')
 yticklabels({P_all.name})
 set(gca, 'YDir', 'reverse')
 title('Relative improvement (peak AC / NC)')
+
+%%
+
+ac_res = [metrics.ac_res_x];
+nc_res= [metrics.nc_res_x];
+imp = [nc_res./ac_res];
+
+f = figure(101); clf;
+f.Position = [400 150 600 800];
+subplot(211)
+barh([nc_res; ac_res].')
+yticklabels({P_all.name})
+set(gca, 'YDir', 'reverse')
+legend('No Correction', 'Aberration Corrected', 'Orientation', 'horizontal', ...
+    'Location', 'northoutside')
+subplot(212)
+barh(imp.')
+yticklabels({P_all.name})
+set(gca, 'YDir', 'reverse')
+title('Relative improvement Resolution (peak AC / NC)')
+
+
+ac_res = [metrics.ac_IQ_x_peak];
+nc_res= [metrics.nc_IQ_x_peak];
+imp = [nc_res./ac_res];
+
+f = figure(102); clf;
+f.Position = [400 150 600 800];
+subplot(211)
+barh([nc_res; ac_res].')
+yticklabels({P_all.name})
+set(gca, 'YDir', 'reverse')
+legend('No Correction', 'Aberration Corrected', 'Orientation', 'horizontal', ...
+    'Location', 'northoutside')
+subplot(212)
+barh(imp.')
+yticklabels({P_all.name})
+set(gca, 'YDir', 'reverse')
+title('Relative improvement Peak internsity (BFd)')
+
+
+
 
 return
 

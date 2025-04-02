@@ -122,7 +122,7 @@ function [metrics, data] = rt_test_improvement(P, out, BFC, test_resolution, app
     
     %% OPTIONAL SHOW FULL RF
 
-    if nargout ~= 2
+    if nargout ~= 2 && ~test_resolution
         return 
     end
     
