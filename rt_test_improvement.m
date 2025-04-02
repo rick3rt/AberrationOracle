@@ -6,7 +6,7 @@ function [metrics, data] = rt_test_improvement(P, out, BFC, test_resolution, app
     %% Element dictivity
     
     lambda = P.lambda;
-    W = lambda*0.9; % small kerf
+    W = lambda * 0.9; % small kerf
     directivity_fun = @(theta) cos(theta).*sinc(pi*W/lambda.*sin(theta));
     
     % theta_test = linspace(-pi/2, pi/2, 128);
@@ -52,10 +52,11 @@ function [metrics, data] = rt_test_improvement(P, out, BFC, test_resolution, app
     
     
     error_rt_tof = out.error_tof_round_trip;
-    error_rt_tof(error_rt_tof==0) = NaN;
-    error_rt_tof = fillmissing(error_rt_tof, 'spline');
-    error_rt_tof = error_rt_tof-min(error_rt_tof);
-    
+    % BUG FXED NOT NEEDED ANYMORE? 
+    % error_rt_tof(error_rt_tof==0) = NaN;
+    % error_rt_tof = fillmissing(error_rt_tof, 'spline');
+    % error_rt_tof = error_rt_tof-min(error_rt_tof);
+    % 
     
     
     t_min = 0;
@@ -117,7 +118,6 @@ function [metrics, data] = rt_test_improvement(P, out, BFC, test_resolution, app
     metrics.improvement = peak_ac/peak_nc;
     metrics.ac_RF_sum = RF_pulse_sum_ac;
     metrics.nc_RF_sum = RF_pulse_sum_nc;
-    % metrics.image_pulse = image_pulse;
     
     
     %% OPTIONAL SHOW FULL RF
@@ -156,15 +156,16 @@ function [metrics, data] = rt_test_improvement(P, out, BFC, test_resolution, app
         return
     end
 
-
+% keyboard 
 
     %% Test resolution
-    fprintf('Testing Resolution...\n');l
+    fprintf('Testing Resolution...\n');
     
     span_lambda = 10;
     xvec = P.x_pixel + (-span_lambda * P.lambda:P.lambda / 2:span_lambda * P.lambda);
     zvec = P.z_pixel + (-span_lambda * P.lambda:P.lambda / 2:span_lambda * P.lambda);
-    Nx = numel(xvec); Nz = numel(zvec);
+    Nx = numel(xvec); 
+    Nz = numel(zvec);
     
     IQ_full = hilbert(data.RF);
     IQ_xax_ac = zeros(1, Nx);
@@ -172,11 +173,23 @@ function [metrics, data] = rt_test_improvement(P, out, BFC, test_resolution, app
     
     time_remaining_progbar_ui(0, Nx)
     for kx = 1:Nx
-        [tof_ac(kx, :), tof_nc(kx, :)] = rt_trace_tof(P, BFC, xvec(kx), P.z_pixel);
+    % if 1; kx =  ceil(Nx/2);
+        [tof_ac, tof_nc] = rt_trace_tof(P, BFC, xvec(kx), P.z_pixel);
     
-        IQ_interp = interp1_per_channel(data.tvec, IQ_full, tof_ac(kx, :));
+        dtof = min(tof_ac) - min(tof_nc);
+
+        % debug plot
+        % figure(101); clf;
+        % imagesc(P.x_piezo * 1e3, t_vec_full * 1e6, RF_delayed_full)
+        % colormap bone
+        % hold on
+        % plot(P.x_piezo*1e3,tof_ac*1e6)
+        % plot(P.x_piezo*1e3,(tof_nc+dtof)*1e6)
+        
+
+        IQ_interp = interp1_per_channel(data.tvec, IQ_full, tof_ac);
         IQ_xax_ac(kx) = sum(IQ_interp, 'omitmissing');
-        IQ_interp = interp1_per_channel(data.tvec, IQ_full, tof_nc(kx, :));
+        IQ_interp = interp1_per_channel(data.tvec, IQ_full, tof_nc+dtof);
         IQ_xax_nc(kx) = sum(IQ_interp, 'omitmissing');
 
         time_remaining_progbar_ui(kx, Nx)
@@ -195,12 +208,28 @@ function [metrics, data] = rt_test_improvement(P, out, BFC, test_resolution, app
     [w_ac, y50_ac, x1_ac, x2_ac] = fwhm2(xvec * 1e3, abs(IQ_xax_ac));
     [w_nc, y50_nc, x1_nc, x2_nc] = fwhm2(xvec * 1e3, abs(IQ_xax_nc));
 
+
+    cmap = lines(2);
+
+    figure(69); clf
+    plot(xvec * 1e3, abs(IQ_xax_nc))
+    hold on
+    plot(xvec * 1e3, abs(IQ_xax_ac))
+    legend('NC', 'AC')
     
-    metrics.nc_IQ_x = IQ_xax_nc;
+    plot([x1_nc x2_nc], [y50_nc y50_nc],'Color',cmap(1,:),'HandleVisibility','off')
+    plot([x1_ac x2_ac], [y50_ac y50_ac],'Color',cmap(2,:),'HandleVisibility','off')
+
+    title(sprintf('Lateral Resolution - NC: %.3f mm  - AC: %.3f mm',w_nc , w_ac))
+
+    % resolution metrics
+    metrics.ac_res_x = w_ac; % in mm 
     metrics.nc_res_x = w_nc; % in mm 
     metrics.ac_IQ_x = IQ_xax_ac;
-    metrics.ac_res_x = w_ac; % in mm 
-
+    metrics.nc_IQ_x = IQ_xax_nc;
+    metrics.ac_IQ_x_peak = max(abs(IQ_xax_ac));
+    metrics.nc_IQ_x_peak = max(abs(IQ_xax_nc));
+    
 
 end
 

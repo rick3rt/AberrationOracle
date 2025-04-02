@@ -5,10 +5,10 @@ clear all
 % set transducer frequency
 P.Fc = 7.5e6;
 P.lambda = 1540 / P.Fc;
-P.lens_wavespeed = 1540; % m/s
+P.lens_wavespeed = 1000; % m/s
 P.lens_thickness = 5 * P.lambda; % m
-P.skin_wavespeed = 1540; % m/s
-P.brain_wavespeed = 1540; % m/s
+P.skin_wavespeed = 1600; % m/s
+P.brain_wavespeed = 1570; % m/s
 
 % bone properties
 P.bone_wavespeed = 3000; % m/s
@@ -25,8 +25,12 @@ P.x_piezo = (0:P.num_elements - 1) .* P.lambda - (P.num_elements - 1) / 2 * P.la
 P.z_piezo = 0 * P.x_piezo;
 
 % define source and target point
-P.x_source = P.x_piezo(64);
-P.z_source = P.z_piezo(64);
+ke = 64;
+P.x_source = P.x_piezo(ke);
+P.z_source = P.z_piezo(ke);
+
+
+
 P.x_pixel = 0; % center of image
 P.z_pixel = P.lens_thickness + P.distance_trans_bone + P.bone_thickness + P.distance_bone_pixel;
 
@@ -44,7 +48,7 @@ zpix_fun = @(P) P.lens_thickness + P.distance_trans_bone + P.bone_thickness + P.
 % Run and show results
 [out, BFC] = rt_compare(P);
 figs = rt_compare_plot(P, out, BFC);
-[metrics, data] = rt_test_improvement(P, out, BFC, true);
+[metrics, data] = rt_test_improvement(P, out, BFC, 1);
 
 % return
 
@@ -89,11 +93,12 @@ output_folder = 'figs';
 save_fig_fun = @(f) exportgraphics(f, fullfile(output_folder, [strrep(f.Name, ' ', '_') '.png']), 'Resolution', 300);
 save_figs_fun = @(fc) cellfun(save_fig_fun, fc);
 
+
 for k = 1:numel(P_all)
     Ptest = P_all(k);
     [out, BFC] = rt_compare(Ptest);
     figs = rt_compare_plot(Ptest, out, BFC);
-    metrics(k) = rt_test_improvement(P, out, BFC, true);
+    metrics(k) = rt_test_improvement(P, out, BFC, 1);
 
     % save_figs_fun(figs)
 end
