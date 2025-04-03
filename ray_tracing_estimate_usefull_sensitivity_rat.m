@@ -13,7 +13,7 @@ P.brain_wavespeed = 1570; % m/s
 
 % bone properties
 P.bone_wavespeed = 3000; % m/s
-P.bone_thickness = 0.4e-3; % m
+P.bone_thickness = 0.5e-3; % m
 P.bone_curvature = 15; % 1/m
 
 % distance to bone and pixel
@@ -49,8 +49,12 @@ save_fig_fun = @(f) exportgraphics(f, fullfile(output_folder, [strrep(f.Name, ' 
 save_figs_fun = @(fc) cellfun(save_fig_fun, fc);
 
 % Run and show results
+f_outer = @(x) 20*x.^2 + sin(x *1e3)*5e-5 + sin(x *1e3/2-1)*3e-5;
+f_inner = @(x) 20*x.^2 + sin(x *1e3)*3e-5 + sin(x *1e3*1.1+2.546)*3e-5 + 0.5e-3;
+
 TEST_RESOLUTION = false;
-[P, BFC,out] = rt_compare(P);
+BFC = rt_make_interfaces(P, f_outer, f_inner); % make custom spline interfaces
+[P, BFC,out] = rt_compare(P, BFC);
 figs = rt_compare_plot(P, BFC, out);
 [metrics, data, figs2] = rt_test_improvement(P, BFC,out, TEST_RESOLUTION);
 figs = [figs figs2];
@@ -131,13 +135,17 @@ clear metrics
 for k = 1:numel(P_all)
 
     Ptest = P_all(k);
-    [Ptest, BFC, out]  = rt_compare(Ptest);
+
+    BFC = struct(); 
+    BFC = rt_make_interfaces(Ptest, f_outer, f_inner); % make custom spline interfaces
+
+    [Ptest, BFC, out]  = rt_compare(Ptest, BFC);
     figs = rt_compare_plot(Ptest, BFC, out);
     [metrics(k), ~, figs2] = rt_test_improvement(Ptest, BFC, out, TEST_RESOLUTION);
     figs = [figs figs2];
 
     % saving of figures
-    output_folder = fullfile('figs_rat', Ptest.name);
+    output_folder = fullfile('figs_rat_spline', Ptest.name);
     [~, ~] = mkdir(output_folder);
     save_fig_fun = @(f) exportgraphics(f, fullfile(output_folder, [strrep(f.Name, ' ', '_') '.png']), 'Resolution', 300);
     save_figs_fun = @(fc) cellfun(save_fig_fun, fc);

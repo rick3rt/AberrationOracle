@@ -1,29 +1,39 @@
-function [P, BFC, out] = rt_compare(P)
+function [P, BFC, out] = rt_compare(P, BFC)
     % compare multi layer ray tracing with homogenous assumption
     % P: parameters struct
+
+    if ~exist('BFC','var'); BFC = struct(); end
 
     % prepare ray tracer
     % ===========================================================
 
     % TODO IMPLEMENT ATTENUATION LENS? (FIX POINT SOURCE STUFF)
-    BFC.medium_attenuation = [0.0, 0.54, 6.9, 0.6]; % dB/(MHz*cm)
+    if ~isfield(BFC, 'medium_attenuation')
+        BFC.medium_attenuation = [0.0, 0.54, 6.9, 0.6]; % dB/(MHz*cm)
+    end
 
     % define sound speed per layer
-    BFC.medium_soundspeeds = [P.lens_wavespeed,
-                              P.skin_wavespeed,
-                              P.bone_wavespeed,
-                              P.brain_wavespeed];
+    if ~isfield(BFC, 'medium_soundspeeds')
+        BFC.medium_soundspeeds = [P.lens_wavespeed,
+                                  P.skin_wavespeed,
+                                  P.bone_wavespeed,
+                                  P.brain_wavespeed];
+    end
 
-    BFC.medium_density = [1.0, 1.0, 1.0, 1.0]; % kg/m^3
+    if ~isfield(BFC, 'medium_density')
+        BFC.medium_density = [1.2, 1.02, 2.0, 1.001]; % kg/m^3
+    end
 
     % define  interfaces between tissue layers
-    BFC.medium_interfaces = {P.lens_thickness,
-                             [P.bone_curvature, 0, P.lens_thickness + P.distance_trans_bone],
-                             [P.bone_curvature, 0, P.lens_thickness + P.distance_trans_bone + P.bone_thickness]};
+    if ~isfield(BFC, 'medium_interfaces')
+        BFC.medium_interfaces = {P.lens_thickness,
+                                 [P.bone_curvature, 0, P.lens_thickness + P.distance_trans_bone],
+                                 [P.bone_curvature, 0, P.lens_thickness + P.distance_trans_bone + P.bone_thickness]};
+    end
+
 
     BFC.medium_soundspeeds = BFC.medium_soundspeeds(:).'; % guarantee row vector
     BFC.medium_density = BFC.medium_density(:).'; % guarantee row vector
-
     BFC.medium_interfaces = BFC.medium_interfaces(:).'; % guarantee row vector
 
     % derived properties
