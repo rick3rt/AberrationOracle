@@ -1,9 +1,10 @@
 % clc
 clear all
 % close all
+addpath('functions\')
 
 % set transducer frequency
-P.Fc = 15e6;
+P.Fc = 7.5e6;
 P.c0 = 1540; % reference sound speed, homogenous assumption
 P.lambda = P.c0 /  P.Fc;
 P.lens_wavespeed = 1000; % m/s
@@ -12,9 +13,9 @@ P.skin_wavespeed = 1600; % m/s
 P.brain_wavespeed = 1570; % m/s
 
 % bone properties
-P.bone_wavespeed = 3000; % m/s
-P.bone_thickness = 0.5e-3; % m
-P.bone_curvature = 15; % 1/m
+P.bone_wavespeed = 2780; % m/s
+P.bone_thickness = 2e-3; % m
+P.bone_curvature = 0; % 1/m
 
 % distance to bone and pixel
 P.distance_trans_bone = 5 * P.lambda;
@@ -33,7 +34,7 @@ ke = 64;
 P.z_source = -10;
 P.theta_source = deg2rad(0);
 
-P.x_pixel = -10*P.lambda; % center of image
+P.x_pixel = 0; % center of image
 P.z_pixel = P.lens_thickness + P.distance_trans_bone + P.bone_thickness + P.distance_bone_pixel;
 
 % f-number in reconstruction
@@ -42,49 +43,67 @@ P.f_number = 2;
 P.name = 'default';
 zpix_fun = @(P) P.lens_thickness + P.distance_trans_bone + P.bone_thickness + P.distance_bone_pixel;
 
+
+
 % fig saving
-output_folder = 'figs_rat';
+output_folder = 'figs_pmma';
 [~, ~] = mkdir(output_folder);
 save_fig_fun = @(f) exportgraphics(f, fullfile(output_folder, [strrep(f.Name, ' ', '_') '.png']), 'Resolution', 300);
 save_figs_fun = @(fc) cellfun(save_fig_fun, fc);
 
 % Run and show results
-f_outer = @(x) 20*x.^2 + sin(x *1e3)*5e-5 + sin(x *1e3/2-1)*3e-5;
-f_inner = @(x) 20*x.^2 + sin(x *1e3)*3e-5 + sin(x *1e3*1.1+2.546)*3e-5 + 0.5e-3;
-
-TEST_RESOLUTION = false;
-BFC = rt_make_interfaces(P, f_outer, f_inner); % make custom spline interfaces
-[P, BFC,out] = rt_compare(P, BFC);
+[P, BFC, out] = rt_compare(P);
 figs = rt_compare_plot(P, BFC, out);
-[metrics, data, figs2] = rt_test_improvement(P, BFC,out, TEST_RESOLUTION);
+[metrics, data, figs2] = rt_test_improvement(P, BFC,out, 0);
+
+%% 
+
+Phomo = P; 
+Phomo.lens_thickness = 5*P.lambda;
+Phomo.lens_wavespeed = P.c0;
+Phomo.bone_wavespeed = P.c0;
+Phomo.skin_wavespeed = P.c0;
+Phomo.brain_wavespeed = P.c0;
+Phomo.distance_bone_pixel = 200*P.lambda;
+Phomo.z_pixel = zpix_fun(Phomo);
+
+BFC = struct(); 
+% BFC.medium_density = [1 1 1 1];
+% BFC.medium_attenuation = [0 0.54 0.54 0.54];
+
+[Phomo, BFC, out] = rt_compare(Phomo, BFC);
+figs = rt_compare_plot(Phomo, BFC, out);
+[metrics, data, figs2] = rt_test_improvement(Phomo, BFC,out, 1);
+
+%%
 figs = [figs figs2];
 
 % Compare plots
 f = figure(13); clf;
 f.Name = ['metrics_' P.name];
 figs{end + 1} = f;
-if TEST_RESOLUTION; subplot(131); end
+
+subplot(131)
 b = bar([metrics.nc_peak; metrics.ac_peak], 'FaceColor', 'flat');
 b.CData = lines(2);
 xticklabels({'NC', 'AC'})
-title(sprintf('Intensity: %.2fx', metrics.ac_peak / metrics.nc_peak))
+title(sprintf('Intensity: %.2f%%', 100*(metrics.ac_peak-metrics.nc_peak) / metrics.nc_peak))
 
-if TEST_RESOLUTION
-    subplot(132)
-    b = bar([metrics.nc_res_x; metrics.ac_res_x], 'FaceColor', 'flat');
-    b.CData = lines(2);
-    xticklabels({'NC', 'AC'})
-    title(sprintf('Resolution: %.2fx', metrics.ac_res_x / metrics.nc_res_x))
-    
-    subplot(133)
-    b = bar([metrics.nc_IQ_x_peak; metrics.ac_IQ_x_peak], 'FaceColor', 'flat');
-    b.CData = lines(2);
-    xticklabels({'NC', 'AC'})
-    title(sprintf('Peak Pixel Value: %.2fx', metrics.ac_IQ_x_peak / metrics.nc_IQ_x_peak))
-end
-drawnow
+subplot(132)
+b = bar([metrics.nc_res_x; metrics.ac_res_x], 'FaceColor', 'flat');
+b.CData = lines(2);
+xticklabels({'NC', 'AC'})
+title(sprintf('Resolution: %.2f%%', 100*(metrics.ac_res_x-metrics.nc_res_x) / metrics.nc_res_x))
+
+subplot(133)
+b = bar([metrics.nc_IQ_x_peak; metrics.ac_IQ_x_peak], 'FaceColor', 'flat');
+b.CData = lines(2);
+xticklabels({'NC', 'AC'})
+title(sprintf('Peak Pixel: %.2f%%', 100*(metrics.ac_IQ_x_peak-metrics.nc_IQ_x_peak) / metrics.nc_IQ_x_peak))
+
 
 % save_figs_fun(figs);
+
 % return
 
 %% Determine new parameter sets
@@ -108,20 +127,14 @@ Pn.distance_bone_pixel = 100 * P.lambda;
 P_all(n) = Pn;
 
 Pn = P; n = n + 1;
-Pn.name = 'dist tranducer-bone +20L bone-pixel 80L';
-Pn.distance_trans_bone = P.distance_trans_bone + 20 * P.lambda;
-Pn.distance_bone_pixel = 80 * P.lambda;
-P_all(n) = Pn;
-
-Pn = P; n = n + 1;
 Pn.name = 'curved bone';
 Pn.bone_curvature = 30; % 1/m
 P_all(n) = Pn;
 
-Pn = P; n = n + 1;
-Pn.name = 'thicker bone (2x)';
-Pn.bone_thickness = 2 * P.bone_thickness;
-P_all(n) = Pn;
+% Pn = P; n = n + 1;
+% Pn.name = 'thicker bone (1.5x)';
+% Pn.bone_thickness = 1.5 * P.bone_thickness;
+% P_all(n) = Pn;
 
 for k = 1:numel(P_all)
     P_all(k).z_pixel = zpix_fun(P_all(k));
@@ -129,23 +142,17 @@ end
 
 %% Run for all;
 
-TEST_RESOLUTION = 1;
-
 clear metrics
 for k = 1:numel(P_all)
 
     Ptest = P_all(k);
-
-    BFC = struct(); 
-    BFC = rt_make_interfaces(Ptest, f_outer, f_inner); % make custom spline interfaces
-
-    [Ptest, BFC, out]  = rt_compare(Ptest, BFC);
+    [Ptest, BFC, out]  = rt_compare(Ptest);
     figs = rt_compare_plot(Ptest, BFC, out);
-    [metrics(k), ~, figs2] = rt_test_improvement(Ptest, BFC, out, TEST_RESOLUTION);
+    [metrics(k), ~, figs2] = rt_test_improvement(Ptest, BFC, out, 1);
     figs = [figs figs2];
 
     % saving of figures
-    output_folder = fullfile('figs_rat_spline', Ptest.name);
+    output_folder = fullfile('figs_pmma', Ptest.name);
     [~, ~] = mkdir(output_folder);
     save_fig_fun = @(f) exportgraphics(f, fullfile(output_folder, [strrep(f.Name, ' ', '_') '.png']), 'Resolution', 300);
     save_figs_fun = @(fc) cellfun(save_fig_fun, fc);
@@ -177,7 +184,7 @@ xlabel('Relative Intenisity improvement')
 
 ac_res = [metrics.ac_res_x];
 nc_res = [metrics.nc_res_x];
-imp = (nc_res - ac_res)./nc_res;
+imp = [nc_res ./ ac_res];
 
 f = figure(101); clf;
 f.Position = [800 150 600 800];
@@ -189,11 +196,12 @@ set(gca, 'YDir', 'reverse')
 legend('No Correction', 'Aberration Corrected', 'Orientation', 'horizontal', ...
     'Location', 'northoutside')
 subplot(212)
-barh(100*imp.')
+barh(imp.')
 yticklabels({P_all.name})
 set(gca, 'YDir', 'reverse')
 title('Relative improvement Resolution (peak AC / NC)')
-xlabel('Resolution Improvement (%)')
+xlabel('Resolution Improvement')
+
 
 % ac_res = [metrics.ac_IQ_x_peak];
 % nc_res = [metrics.nc_IQ_x_peak];
@@ -213,30 +221,3 @@ xlabel('Resolution Improvement (%)')
 % title('Relative improvement Peak internsity (BFd)')
 
 return
-
-%% Make complexer shape
-
-
-xv = P.x_piezo; 
-
-
-fun1 = @(x) 20*x.^2 + sin(xv *1e3)*5e-5 + sin(xv *1e3/2-1)*3e-5;
-fun2 = @(x) 20*x.^2 + sin(xv *1e3)*3e-5 + sin(xv *1e3*1.1+2.546)*3e-5 + 0.5e-3;
-
-z1 = fun1(xv);
-z2 = fun2(xv);
-
-sp1 = spline_fit_knots(xv, z1, 8);
-sp2 = spline_fit_knots(xv, z2, 8);
-
-
-figure(1);clf;
-plot(xv, fun1(xv))
-hold on 
-plot(xv, fun2(xv))
-plot(xv, ppval(sp1, xv))
-plot(xv, ppval(sp2, xv))
-
-
-set(gca,'ydir','reverse')
-axis equal

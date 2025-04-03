@@ -31,7 +31,7 @@ function [P, BFC, out] = rt_compare(P, BFC)
                                  [P.bone_curvature, 0, P.lens_thickness + P.distance_trans_bone + P.bone_thickness]};
     end
 
-
+    %% compute derived properties and pack other settings in BFC
     BFC.medium_soundspeeds = BFC.medium_soundspeeds(:).'; % guarantee row vector
     BFC.medium_density = BFC.medium_density(:).'; % guarantee row vector
     BFC.medium_interfaces = BFC.medium_interfaces(:).'; % guarantee row vector
@@ -47,6 +47,8 @@ function [P, BFC, out] = rt_compare(P, BFC)
     BFC.XRecon = P.x_piezo;
     BFC.ZRecon = 0:P.lambda / 2:100 * P.lambda;
     BFC.LensThickness = P.lens_thickness;
+
+    %% ===========================================================
 
     % compute source location - homogeneous and lens speed of sound
     c0 = P.c0;
@@ -70,7 +72,7 @@ function [P, BFC, out] = rt_compare(P, BFC)
     % daspect([1 1 1])
     % ===========================================================
 
-    % ray tracing from source to pixel, and pixel to all elements
+    %% ray tracing from source to pixel, and pixel to all elements
     % ===========================================================
     to_layer = numel(BFC.medium_soundspeeds); % trace to brain layer
     [rays_tx, tof_tx, theta_tx] = rt.ray_bending(P.x_source, P.z_source, P.x_pixel, P.z_pixel, BFC, to_layer);
@@ -91,7 +93,7 @@ function [P, BFC, out] = rt_compare(P, BFC)
     ind_valid = find(~isnan(tof_rx_all)); % valid rays in reception.
     tof_round_trip_ac = tof_tx + tof_rx_all; % aberration corrected time of flight
 
-    % calculate time of flight for homogenous medium
+    %% calculate time of flight for homogenous medium
     % ===========================================================
     delta_tof_nc = (1 / P.bone_wavespeed -1/1540) * P.bone_thickness;
     dz = delta_tof_nc * c0;
@@ -118,7 +120,7 @@ function [P, BFC, out] = rt_compare(P, BFC)
     f_number_idx_ac = find(abs(theta_rx_all_ac) < half_opening_angle_rad);
     f_number_idx_nc = find(abs(theta_rx_all_nc) < half_opening_angle_rad);
 
-    % collect results
+    %% collect results
     % ===========================================================
     out.ac_rays_tx = rays_tx;
     out.ac_tof_tx = tof_tx;

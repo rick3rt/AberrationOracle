@@ -1,13 +1,13 @@
-function [metrics, data, figs] = rt_test_improvement(P, BFC,out, test_resolution, apply_attenuation)
+function [metrics, data, figs] = rt_test_improvement(P, BFC, out, test_resolution, apply_attenuation)
 
     if ~exist('test_resolution', 'var'); test_resolution = false; end
     if ~exist('apply_attenuation', 'var'); apply_attenuation = true; end
-    figs = {}; 
-    
+    figs = {};
+
     %% Element dictivity
-    
+
     lambda = P.lambda;
-    W = lambda * 0.9; % small kerf
+    W = lambda * 0.8; % small kerf
     directivity_fun = @(theta) cos(theta) .* sinc(pi * W / lambda .* sin(theta));
 
     % theta_test = linspace(-pi/2, pi/2, 128);
@@ -15,7 +15,7 @@ function [metrics, data, figs] = rt_test_improvement(P, BFC,out, test_resolution
     % plot(rad2deg(theta_test), directivity_fun(theta_test))
 
     %% Total attenuation along path
-    
+
     att_fun = @(rays) sum(BFC.medium_attenuation .* [rays.length] * 1e2 * (P.Fc / 1e6));
 
     attenuation_tx = att_fun(out.ac_rays_tx);
@@ -36,7 +36,6 @@ function [metrics, data, figs] = rt_test_improvement(P, BFC,out, test_resolution
     % figure(1);clf;
     % plot(TF_rt)
 
-
     %% Generate RF
     P.Fs = 20 * P.Fc; % Sampling frequency
     P.num_cycles = 3;
@@ -49,10 +48,10 @@ function [metrics, data, figs] = rt_test_improvement(P, BFC,out, test_resolution
     [peak_pulse, imax] = max(image_pulse_env);
     ttp = imax / P.Fs;
 
-    figure(99);
-    plot(image_pulse)
-    hold on
-    plot(image_pulse_env)
+    % figure(99);
+    % plot(image_pulse)
+    % hold on
+    % plot(image_pulse_env)
 
     error_rt_tof = out.error_tof_round_trip;
 
@@ -73,9 +72,9 @@ function [metrics, data, figs] = rt_test_improvement(P, BFC,out, test_resolution
         RF_pulse = RF_pulse .* directivity_fun(out.ac_theta_rx); % element directivity
     end
     % delay RF
-    RF_delayed_nc = pulse_delaying_RF(RF_pulse, error_rt_tof, P.Fs);
+    RF_delayed_nc = rt.util.pulse_delaying_RF(RF_pulse, error_rt_tof, P.Fs);
 
-    % plot RF error 
+    % plot RF error
     cmap_lines = lines(2);
     figure(102); clf;
     subplot(121)
@@ -127,23 +126,27 @@ function [metrics, data, figs] = rt_test_improvement(P, BFC,out, test_resolution
     RF_full = RF_full .* attenuation_rt_mag; % attenuation
     RF_full = RF_full .* TF_rt; % transmission factors
     RF_full = RF_full .* directivity_fun(out.ac_theta_rx); % element directivity
-    RF_delayed_full = pulse_delaying_RF(RF_full, out.ac_tof_round_trip - ttp, P.Fs);
+    RF_delayed_full = rt.util.pulse_delaying_RF(RF_full, out.ac_tof_round_trip - ttp, P.Fs);
     cmap_lines = lines(2);
     % cmap_lines = flip(cmap_lines);
 
-    figure(101); clf;
+    t_lens_cor = 2*(1/P.lens_wavespeed - 1/P.c0)*P.lens_thickness;
+
+    figure(201); clf;
     imagesc(P.x_piezo * 1e3, t_vec_full * 1e6, RF_delayed_full)
     colormap bone
     hold on
 
     plot(P.x_piezo * 1e3, out.ac_tof_round_trip * 1e6, '--', 'color', cmap_lines(1, :), 'LineWidth', 1);
     plot(P.x_piezo(out.ac_f_number_idx) * 1e3, out.ac_tof_round_trip(out.ac_f_number_idx) * 1e6, '-', 'color', cmap_lines(1, :), 'LineWidth', 2);
-    plot(P.x_piezo * 1e3, out.nc_tof_round_trip * 1e6, '--', 'color', cmap_lines(2, :), 'LineWidth', 1);
-    plot(P.x_piezo(out.nc_f_number_idx) * 1e3, out.nc_tof_round_trip(out.nc_f_number_idx) * 1e6, '-', 'color', cmap_lines(2, :), 'LineWidth', 2);
-
+    plot(P.x_piezo * 1e3, (t_lens_cor+out.nc_tof_round_trip) * 1e6, '--', 'color', cmap_lines(2, :), 'LineWidth', 1);
+    plot(P.x_piezo(out.nc_f_number_idx) * 1e3, (t_lens_cor+out.nc_tof_round_trip(out.nc_f_number_idx)) * 1e6, '-', 'color', cmap_lines(2, :), 'LineWidth', 2);
+   
     data.RF = RF_delayed_full;
     data.tvec = t_vec_full;
     data.ttp = ttp;
+    
+    % keyboard
 
     if ~test_resolution
         return
@@ -158,24 +161,27 @@ function [metrics, data, figs] = rt_test_improvement(P, BFC,out, test_resolution
     span_lambda = 5;
     xvec = P.x_pixel + (-span_lambda * P.lambda:P.lambda / 4:span_lambda * P.lambda);
     zvec = P.z_pixel + (-span_lambda * P.lambda:P.lambda / 4:span_lambda * P.lambda);
-    Nx = numel(xvec); Nz = numel(zvec);
+    Nx = numel(xvec); %Nz = numel(zvec);
 
-    IQ_full = hilbert(data.RF);% analytic signal
+    IQ_full = hilbert(data.RF); % analytic signal
 
     IQ_xax_ac = zeros(1, Nx);
-    IQ_xax_nc = zeros(1, Nx);
-    tof_ac = zeros(Nx, P.num_elements);
+    % IQ_xax_nc = zeros(1, Nx);
+    % tof_ac_collect = zeros(Nx, P.num_elements);
 
     time_remaining_progbar_ui(0, Nx)
+    tvec = data.tvec;
     for kx = 1:Nx
         % if 1; kx =  ceil(Nx/2);
-        tof_ac(kx,:) = rt_trace_tof(P, BFC, xvec(kx), P.z_pixel);
-        IQ_interp = interp1_per_channel(data.tvec, IQ_full, tof_ac(kx,:),'cubic');
+        tof_ac = rt_trace_tof(P, BFC, xvec(kx), P.z_pixel);
+        IQ_interp = rt.util.interp1_per_channel(tvec, IQ_full, tof_ac, 'cubic');
         IQ_xax_ac(kx) = sum(IQ_interp, 'omitmissing');
+
+        % tof_ac_collect(kx,:) = tof_ac;
         time_remaining_progbar_ui(kx, Nx)
     end
 
-    % Homogeneous
+    %% Homogeneous
     span_lambda_x = 10;
     span_lambda_z = 20;
     xvec_nc = P.x_pixel + (-span_lambda_x * P.lambda:P.lambda / 4:span_lambda_x * P.lambda);
@@ -183,7 +189,7 @@ function [metrics, data, figs] = rt_test_improvement(P, BFC,out, test_resolution
     Nx = numel(xvec_nc); Nz = numel(zvec);
     [X, Z] = meshgrid(xvec_nc, zvec);
 
-    tau_tx = hypot(X - P.x_source, Z - P.z_source) / P.c0 - P.tx_add_to_nc;
+    tau_tx = hypot(X - P.x_source, Z - P.z_source) / P.c0 - P.tx_add_to_nc + t_lens_cor;
     tau_rx = hypot(X - reshape(P.x_piezo, 1, 1, []), Z - reshape(P.z_piezo, 1, 1, [])) / P.c0;
     theta_rx = atan2(Z - reshape(P.z_piezo, 1, 1, []), X - reshape(P.x_piezo, 1, 1, [])) - pi / 2;
     half_opening_angle_rad = atan(1/2 / P.f_number);
@@ -192,23 +198,21 @@ function [metrics, data, figs] = rt_test_improvement(P, BFC,out, test_resolution
     for kx = 1:Nx
         tau = squeeze(tau_tx(:, kx, :) + tau_rx(:, kx, :));
         f_mask = squeeze(abs(theta_rx(:, kx, :)) < half_opening_angle_rad);
-        IQ_interp = interp1_per_channel(data.tvec, IQ_full, tau, 'cubic');
-        IQ_line = sum(IQ_interp .* f_mask, 2,'omitmissing');
+        IQ_interp = rt.util.interp1_per_channel(data.tvec, IQ_full, tau, 'cubic');
+        IQ_line = sum(IQ_interp .* f_mask, 2, 'omitmissing');
         IQ_nc(:, kx) = IQ_line;
     end
 
-    figure(990);clf;
-    imagesc(P.x_piezo,data.tvec,real(IQ_full))
-    hold on 
-    kx = ceil(Nx/2); kz = ceil(Nz/2);
-    tau = squeeze(tau_tx(kz, kx, :) + tau_rx(kz, kx, :));
-    plot(P.x_piezo,tau)
+    % figure(990);clf;
+    % imagesc(P.x_piezo,data.tvec,real(IQ_full))
+    % hold on
+    % kx = ceil(Nx/2); kz = ceil(Nz/2);
+    % tau = squeeze(tau_tx(kz, kx, :) + tau_rx(kz, kx, :));
+    % plot(P.x_piezo,tau)
 
-
-
-    [v, kz, kx] = maxij(abs(IQ_nc));
-    % debug plot
-    f = figure(123); clf;
+    % debug plot of homogeneous PSF
+    [v, kz, kx] = maxij(abs(IQ_nc)); % location peak intensity PSF
+    f = figure(202); clf;
     f.Name = ['psf_homo_' P.name];
     imagesc(xvec_nc * 1e3, zvec * 1e3, flogc(IQ_nc), [-60 0])
     daspect([1 1 1])
@@ -217,13 +221,11 @@ function [metrics, data, figs] = rt_test_improvement(P, BFC,out, test_resolution
     colormap bone
     title(['psf homo ' P.name])
 
-    figs{end+1} = f;
+    figs{end + 1} = f;
 
     % interpolate to same grid as AC
     IQ_xax_nc = IQ_nc(kz, :);
     IQ_xax_nc = interp1(xvec_nc, IQ_xax_nc, xvec);
-
-
 
     %% determine and show resolution.
     [w_ac, y50_ac, x1_ac, x2_ac] = fwhm2(xvec * 1e3, abs(IQ_xax_ac));
@@ -233,15 +235,15 @@ function [metrics, data, figs] = rt_test_improvement(P, BFC,out, test_resolution
 
     f = figure(69); clf
     f.Name = ['resolution_' P.name];
-    figs{end+1} = f;
+    figs{end + 1} = f;
     plot(xvec * 1e3, abs(IQ_xax_nc))
     hold on
     plot(xvec * 1e3, abs(IQ_xax_ac))
     legend('NC', 'AC')
     plot([x1_nc x2_nc], [y50_nc y50_nc], 'Color', cmap(1, :), 'HandleVisibility', 'off')
     plot([x1_ac x2_ac], [y50_ac y50_ac], 'Color', cmap(2, :), 'HandleVisibility', 'off')
-    title(sprintf('%s\\newline Lateral Resolution - NC: %.3f mm - AC: %.3f mm (%.2fx)',P.name, w_nc, w_ac, w_ac/w_nc))
-    
+    title(sprintf('%s\\newline Lateral Resolution - NC: %.3f mm - AC: %.3f mm (%.2fx)', P.name, w_nc, w_ac, w_ac / w_nc))
+
     % resolution metrics
     metrics.ac_res_x = w_ac; % in mm
     metrics.nc_res_x = w_nc; % in mm
