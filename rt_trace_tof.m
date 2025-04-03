@@ -1,9 +1,10 @@
-function [tof_ac, tof_nc] = rt_trace_tof(P, BFC, xp, zp)
+function tof_ac = rt_trace_tof(P, BFC, xp, zp)
 
     % ray tracing from source to pixel, and pixel to all elements
     % ===========================================================
-    to_layer = 4; % trace to brain layer
+    to_layer = numel(BFC.medium_soundspeeds); % trace to final layer
     [rays_tx, tof_tx, theta_tx] = rt.ray_bending(P.x_source, P.z_source, xp, zp, BFC, to_layer);
+    tof_tx = tof_tx - P.tx_add_to_ac;
 
     tof_rx_all = zeros(1, P.num_elements);
     theta_rx_all = zeros(1, P.num_elements);
@@ -20,41 +21,31 @@ function [tof_ac, tof_nc] = rt_trace_tof(P, BFC, xp, zp)
     ind_valid = find(~isnan(tof_rx_all)); % valid rays in reception.
     tof_round_trip = tof_tx + tof_rx_all;
 
-    % calculate time of flight for homogenous medium
-    % ===========================================================
-    c0 = 1540;
-    delta_tof_nc = (1 / P.bone_wavespeed -1/1540) * P.bone_thickness;
-    dz = delta_tof_nc * c0;
-
-    vec_pixel = [xp; zp + dz];
-
-    tof_round_trip_c0 = vecnorm(vec_pixel - [P.x_source; P.z_source]) / c0 + ...
-        vecnorm([P.x_piezo; P.z_piezo] - vec_pixel) / c0;
-
-    rx_vec = vec_pixel - [P.x_piezo; P.z_piezo];
-    theta_rx_all_c0 = atan2(rx_vec(2, :), rx_vec(1, :)) - pi / 2;
-
     % mask outside f-number
     % half opening angle corresponding to f-number
     half_opening_angle_rad = atan(1/2 / P.f_number);
     f_number_idx = find(abs(theta_rx_all) > half_opening_angle_rad);
-    f_number_idx_nc = find(abs(theta_rx_all_c0) > half_opening_angle_rad);
 
-    % determine outlier in center; and fix
-
-    % error_rt_tof = tof_round_trip-tof_round_trip_c0;
-    % msk = error_rt_tof(error_rt_tof==0);
-    % tof_round_trip(msk) = NaN;
-    % tof_round_trip = fillmissing(tof_round_trip, 'spline');
-
-    msk = isoutlier(diff(tof_round_trip), 'mean');
-    tof_round_trip(logical([msk 0])) = NaN;
-    tof_round_trip = fillmissing(tof_round_trip, 'spline');
-
+    % mask fnumber for reconstruction
     tof_round_trip(f_number_idx) = NaN;
-    tof_round_trip_c0(f_number_idx_nc) = NaN;
 
     tof_ac = tof_round_trip;
-    tof_nc = tof_round_trip_c0;
 
 end
+
+% % calculate time of flight for homogenous medium
+% % ===========================================================
+% c0 = 1540;
+% delta_tof_nc = (1 / P.bone_wavespeed -1/1540) * P.bone_thickness;
+% dz = delta_tof_nc * c0;
+%
+% vec_pixel = [xp; zp + dz];
+%
+% tof_round_trip_c0 = vecnorm(vec_pixel - [P.x_source; P.z_source]) / c0 + ...
+%     vecnorm([P.x_piezo; P.z_piezo] - vec_pixel) / c0;
+%
+% rx_vec = vec_pixel - [P.x_piezo; P.z_piezo];
+% theta_rx_all_c0 = atan2(rx_vec(2, :), rx_vec(1, :)) - pi / 2;
+% f_number_idx_nc = find(abs(theta_rx_all_c0) > half_opening_angle_rad);
+% tof_round_trip_c0(f_number_idx_nc) = NaN;
+% tof_nc = tof_round_trip_c0;

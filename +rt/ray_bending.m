@@ -21,7 +21,9 @@ function [ray, tof, theta_min] = ray_bending(x_start, z_start, x_target, z_targe
     theta0 = theta_vals(imin);
 
     % minimize with fminsearch
-    theta_min = fminsearch(cost_fun, theta0);
+    options = optimset('TolX',1e-8); % refine tolerance, especially important in TX
+    % [theta_min,fval,exit_flag,out] = fminsearch(cost_fun, theta0,options);
+    theta_min = fminsearch(cost_fun, theta0, options);
     [tof, ray] = cost_fun(theta_min);
 
 
