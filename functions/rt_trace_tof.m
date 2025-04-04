@@ -2,7 +2,7 @@ function tof_ac = rt_trace_tof(P, BFC, xp, zp)
 
     % ray tracing from source to pixel, and pixel to all elements
     % ===========================================================
-    to_layer = numel(BFC.medium_soundspeeds); % trace to final layer
+    to_layer = numel(P.medium_soundspeeds); % trace to final layer
     [rays_tx, tof_tx, theta_tx] = rt.ray_bending(P.x_source, P.z_source, xp, zp, BFC, to_layer);
     tof_tx = tof_tx - P.tx_add_to_ac;
 

@@ -5,7 +5,7 @@ clear all
 % set transducer frequency
 P.Fc = 15e6;
 P.c0 = 1480; % reference sound speed, homogenous assumption
-P.lambda = P.c0 /  P.Fc;
+P.lambda = P.c0 / P.Fc;
 P.lens_wavespeed = 1000; % m/s
 P.lens_thickness = 5 * P.lambda; % m
 P.skin_wavespeed = 1480; % m/s
@@ -33,7 +33,7 @@ ke = 64;
 P.z_source = -10;
 P.theta_source = deg2rad(0);
 
-P.x_pixel = -10*P.lambda; % center of image
+P.x_pixel = -10 * P.lambda; % center of image
 P.z_pixel = P.lens_thickness + P.distance_trans_bone + P.bone_thickness + P.distance_bone_pixel;
 
 % f-number in reconstruction
@@ -49,16 +49,16 @@ save_fig_fun = @(f) exportgraphics(f, fullfile(output_folder_base, [strrep(f.Nam
 save_figs_fun = @(fc) cellfun(save_fig_fun, fc);
 
 % Run and show results
-f_outer = @(x) 20*x.^2 + sin(x *1e3)*5e-5 + sin(x *1e3/2-1)*3e-5;
-f_inner = @(x) 20*x.^2 + sin(x *1e3)*3e-5 + sin(x *1e3*1.1+2.546)*3e-5 + 0.5e-3;
+f_outer = @(x) 20 * x .^ 2 + sin(x * 1e3) * 5e-5 + sin(x * 1e3/2 - 1) * 3e-5;
+f_inner = @(x) 20 * x .^ 2 + sin(x * 1e3) * 3e-5 + sin(x * 1e3 * 1.1 + 2.546) * 3e-5 +0.5e-3;
 
 TEST_RESOLUTION = false;
-BFC = struct(); 
-BFC.medium_attenuation = [0 0 0 0];
-BFC.medium_density = [1 1 1 1];
-[P, BFC,out] = rt_compare(P, BFC);
+BFC = struct();
+P.medium_attenuation = [0 0 0 0];
+P.medium_density = [1 1 1 1];
+[P, BFC, out] = rt_compare(P, BFC);
 figs = rt_compare_plot(P, BFC, out);
-[metrics, data, figs2] = rt_test_improvement(P, BFC,out, TEST_RESOLUTION);
+[metrics, data, figs2] = rt_test_improvement(P, BFC, out, TEST_RESOLUTION);
 figs = [figs figs2];
 
 % Compare plots
@@ -77,7 +77,7 @@ if TEST_RESOLUTION
     b.CData = lines(2);
     xticklabels({'NC', 'AC'})
     title(sprintf('Resolution: %.2fx', metrics.ac_res_x / metrics.nc_res_x))
-    
+
     subplot(133)
     b = bar([metrics.nc_IQ_x_peak; metrics.ac_IQ_x_peak], 'FaceColor', 'flat');
     b.CData = lines(2);
@@ -104,7 +104,6 @@ Pn.name = 'dist bone-pixel 40L';
 Pn.distance_bone_pixel = 40 * P.lambda;
 P_all(n) = Pn;
 
-
 Pn = P; n = n + 1;
 Pn.name = 'dist bone-pixel 80L';
 Pn.distance_bone_pixel = 80 * P.lambda;
@@ -114,7 +113,6 @@ P_all(n) = Pn;
 % Pn.name = 'dist bone-pixel 10L';
 % Pn.distance_bone_pixel = 10 * P.lambda;
 % P_all(n) = Pn;
-
 
 for k = 1:numel(P_all)
     P_all(k).z_pixel = zpix_fun(P_all(k));
@@ -128,14 +126,14 @@ clear metrics
 for k = 1:numel(P_all)
 
     Ptest = P_all(k);
-    
-    BFC = struct(); 
-    BFC.medium_attenuation = [0 0 0 0];
-    BFC.medium_density = [1 1 1 1];
+
+    BFC = struct();
+    P.medium_attenuation = [0 0 0 0];
+    P.medium_density = [1 1 1 1];
     % USE COMPLEX INTERFACE
     % BFC = rt_make_interfaces(Ptest, f_outer, f_inner); % make custom spline interfaces
 
-    [Ptest, BFC, out]  = rt_compare(Ptest, BFC);
+    [Ptest, BFC, out] = rt_compare(Ptest, BFC);
     figs = rt_compare_plot(Ptest, BFC, out);
     [metrics(k), ~, figs2] = rt_test_improvement(Ptest, BFC, out, TEST_RESOLUTION);
     figs = [figs figs2];
@@ -151,18 +149,16 @@ end
 
 %% Plot bar graphs of metrics
 
-
-
 ac_peak = [metrics.ac_peak];
 nc_peak = [metrics.nc_peak];
-imp = (ac_peak-nc_peak)./nc_peak ; % [metrics.improvement];
+imp = (ac_peak - nc_peak) ./ nc_peak; % [metrics.improvement];
 
 f_all = {};
 
 f = figure(100); clf;
 f.Position = [200 150 600 800];
 f.Name = 'Intensity';
-f_all{end+1} = f;
+f_all{end + 1} = f;
 subplot(211)
 barh([nc_peak; ac_peak].')
 yticklabels({P_all.name})
@@ -171,21 +167,20 @@ xlabel('Absolute Intensity Difference')
 legend('No Correction', 'Aberration Corrected', 'Orientation', 'horizontal', ...
     'Location', 'northoutside')
 subplot(212)
-barh(100*imp.')
+barh(100 * imp.')
 yticklabels({P_all.name})
 set(gca, 'YDir', 'reverse')
 title('Relative improvement (peak AC / NC)')
 xlabel('Relative Intenisity improvement')
 
-
 ac_res = [metrics.ac_res_x];
 nc_res = [metrics.nc_res_x];
-imp = (nc_res - ac_res)./nc_res;
+imp = (nc_res - ac_res) ./ nc_res;
 
 f = figure(101); clf;
 f.Position = [800 150 600 800];
 f.Name = 'Resolution';
-f_all{end+1} = f;
+f_all{end + 1} = f;
 subplot(211)
 barh([nc_res; ac_res].')
 xlabel('Resolution (mm)')
@@ -194,7 +189,7 @@ set(gca, 'YDir', 'reverse')
 legend('No Correction', 'Aberration Corrected', 'Orientation', 'horizontal', ...
     'Location', 'northoutside')
 subplot(212)
-barh(100*imp.')
+barh(100 * imp.')
 yticklabels({P_all.name})
 set(gca, 'YDir', 'reverse')
 title('Relative improvement Resolution (peak AC / NC)')
@@ -217,8 +212,6 @@ xlabel('Resolution Improvement (%)')
 % set(gca, 'YDir', 'reverse')
 % title('Relative improvement Peak internsity (BFd)')
 
-
-
 save_fig_fun = @(f) exportgraphics(f, fullfile(output_folder_base, [strrep(f.Name, ' ', '_') '.png']), 'Resolution', 300);
 save_figs_fun = @(fc) cellfun(save_fig_fun, fc);
 save_figs_fun(f_all);
@@ -226,10 +219,10 @@ save_figs_fun(f_all);
 return
 
 %% Make complexer shape
-xv = P.x_piezo; 
+xv = P.x_piezo;
 
-fun1 = @(x) 20*x.^2 + sin(xv *1e3)*5e-5 + sin(xv *1e3/2-1)*3e-5;
-fun2 = @(x) 20*x.^2 + sin(xv *1e3)*3e-5 + sin(xv *1e3*1.1+2.546)*3e-5 + 0.5e-3;
+fun1 = @(x) 20 * x .^ 2 + sin(xv * 1e3) * 5e-5 + sin(xv * 1e3/2 - 1) * 3e-5;
+fun2 = @(x) 20 * x .^ 2 + sin(xv * 1e3) * 3e-5 + sin(xv * 1e3 * 1.1 + 2.546) * 3e-5 +0.5e-3;
 
 z1 = fun1(xv);
 z2 = fun2(xv);
@@ -237,14 +230,12 @@ z2 = fun2(xv);
 sp1 = spline_fit_knots(xv, z1, 8);
 sp2 = spline_fit_knots(xv, z2, 8);
 
-
-figure(1);clf;
+figure(1); clf;
 plot(xv, fun1(xv))
-hold on 
+hold on
 plot(xv, fun2(xv))
 plot(xv, ppval(sp1, xv))
 plot(xv, ppval(sp2, xv))
 
-
-set(gca,'ydir','reverse')
+set(gca, 'ydir', 'reverse')
 axis equal

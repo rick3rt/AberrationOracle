@@ -6,7 +6,7 @@ addpath('functions\')
 % set transducer frequency
 P.Fc = 7.5e6;
 P.c0 = 1540; % reference sound speed, homogenous assumption
-P.lambda = P.c0 /  P.Fc;
+P.lambda = P.c0 / P.Fc;
 P.lens_wavespeed = 1000; % m/s
 P.lens_thickness = 5 * P.lambda; % m
 P.skin_wavespeed = 1600; % m/s
@@ -43,8 +43,6 @@ P.f_number = 2;
 P.name = 'default';
 zpix_fun = @(P) P.lens_thickness + P.distance_trans_bone + P.bone_thickness + P.distance_bone_pixel;
 
-
-
 % fig saving
 output_folder = 'figs_pmma';
 [~, ~] = mkdir(output_folder);
@@ -54,26 +52,26 @@ save_figs_fun = @(fc) cellfun(save_fig_fun, fc);
 % Run and show results
 [P, BFC, out] = rt_compare(P);
 figs = rt_compare_plot(P, BFC, out);
-[metrics, data, figs2] = rt_test_improvement(P, BFC,out, 0);
+[metrics, data, figs2] = rt_test_improvement(P, BFC, out, 0);
 
-%% 
+%%
 
-Phomo = P; 
-Phomo.lens_thickness = 5*P.lambda;
+Phomo = P;
+Phomo.lens_thickness = 5 * P.lambda;
 Phomo.lens_wavespeed = P.c0;
 Phomo.bone_wavespeed = P.c0;
 Phomo.skin_wavespeed = P.c0;
 Phomo.brain_wavespeed = P.c0;
-Phomo.distance_bone_pixel = 200*P.lambda;
+Phomo.distance_bone_pixel = 200 * P.lambda;
 Phomo.z_pixel = zpix_fun(Phomo);
 
-BFC = struct(); 
-% BFC.medium_density = [1 1 1 1];
-% BFC.medium_attenuation = [0 0.54 0.54 0.54];
+BFC = struct();
+% P.medium_density = [1 1 1 1];
+% P.medium_attenuation = [0 0.54 0.54 0.54];
 
 [Phomo, BFC, out] = rt_compare(Phomo, BFC);
 figs = rt_compare_plot(Phomo, BFC, out);
-[metrics, data, figs2] = rt_test_improvement(Phomo, BFC,out, 1);
+[metrics, data, figs2] = rt_test_improvement(Phomo, BFC, out, 1);
 
 %%
 figs = [figs figs2];
@@ -87,20 +85,19 @@ subplot(131)
 b = bar([metrics.nc_peak; metrics.ac_peak], 'FaceColor', 'flat');
 b.CData = lines(2);
 xticklabels({'NC', 'AC'})
-title(sprintf('Intensity: %.2f%%', 100*(metrics.ac_peak-metrics.nc_peak) / metrics.nc_peak))
+title(sprintf('Intensity: %.2f%%', 100 * (metrics.ac_peak - metrics.nc_peak) / metrics.nc_peak))
 
 subplot(132)
 b = bar([metrics.nc_res_x; metrics.ac_res_x], 'FaceColor', 'flat');
 b.CData = lines(2);
 xticklabels({'NC', 'AC'})
-title(sprintf('Resolution: %.2f%%', 100*(metrics.ac_res_x-metrics.nc_res_x) / metrics.nc_res_x))
+title(sprintf('Resolution: %.2f%%', 100 * (metrics.ac_res_x - metrics.nc_res_x) / metrics.nc_res_x))
 
 subplot(133)
 b = bar([metrics.nc_IQ_x_peak; metrics.ac_IQ_x_peak], 'FaceColor', 'flat');
 b.CData = lines(2);
 xticklabels({'NC', 'AC'})
-title(sprintf('Peak Pixel: %.2f%%', 100*(metrics.ac_IQ_x_peak-metrics.nc_IQ_x_peak) / metrics.nc_IQ_x_peak))
-
+title(sprintf('Peak Pixel: %.2f%%', 100 * (metrics.ac_IQ_x_peak - metrics.nc_IQ_x_peak) / metrics.nc_IQ_x_peak))
 
 % save_figs_fun(figs);
 
@@ -146,7 +143,7 @@ clear metrics
 for k = 1:numel(P_all)
 
     Ptest = P_all(k);
-    [Ptest, BFC, out]  = rt_compare(Ptest);
+    [Ptest, BFC, out] = rt_compare(Ptest);
     figs = rt_compare_plot(Ptest, BFC, out);
     [metrics(k), ~, figs2] = rt_test_improvement(Ptest, BFC, out, 1);
     figs = [figs figs2];
@@ -181,7 +178,6 @@ set(gca, 'YDir', 'reverse')
 title('Relative improvement (peak AC / NC)')
 xlabel('Relative Intenisity improvement')
 
-
 ac_res = [metrics.ac_res_x];
 nc_res = [metrics.nc_res_x];
 imp = [nc_res ./ ac_res];
@@ -201,7 +197,6 @@ yticklabels({P_all.name})
 set(gca, 'YDir', 'reverse')
 title('Relative improvement Resolution (peak AC / NC)')
 xlabel('Resolution Improvement')
-
 
 % ac_res = [metrics.ac_IQ_x_peak];
 % nc_res = [metrics.nc_IQ_x_peak];

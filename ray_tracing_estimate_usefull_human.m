@@ -42,21 +42,21 @@ axis equal
 
 %% Prepare ray tracer.
 % define sound speed per layer
-BFC.medium_soundspeeds = [Trans.lens_wavespeed,
-                          P.wavespeed_skin
-                          bone.wavespeed
-                          P.wavespeed_brain];
+P.medium_soundspeeds = [Trans.lens_wavespeed,
+                        P.wavespeed_skin
+                        bone.wavespeed
+                        P.wavespeed_brain];
 
 % define  interfaces between tissue layers
-BFC.medium_interfaces = {Trans.lens_thickness,
-                         [bone.curvature, 0, Trans.lens_thickness + bone.distance],
-                         [bone.curvature, 0, Trans.lens_thickness + bone.distance + bone.thickness]};
+P.medium_interfaces = {Trans.lens_thickness,
+                       [bone.curvature, 0, Trans.lens_thickness + bone.distance],
+                       [bone.curvature, 0, Trans.lens_thickness + bone.distance + bone.thickness]};
 
-BFC.medium_soundspeeds = BFC.medium_soundspeeds(:).'; % guarantee row vector
-BFC.medium_interfaces = BFC.medium_interfaces(:).'; % guarantee row vector
+P.medium_soundspeeds = P.medium_soundspeeds(:).'; % guarantee row vector
+P.medium_interfaces = P.medium_interfaces(:).'; % guarantee row vector
 
 % deremine interface derivatives for normal computation
-BFC.medium_interface_derivatives = cellfun(@rt.util.interface_derivative, BFC.medium_interfaces, 'UniformOutput', false);
+P.medium_interface_derivatives = cellfun(@rt.util.interface_derivative, P.medium_interfaces, 'UniformOutput', false);
 
 % define a starting point and a image point, and end point for ray tracing
 ke_start = 1; % start at first element
@@ -71,11 +71,11 @@ x_end = Trans.XPiezo(ke_end);
 z_end = Trans.ZPiezo(ke_end);
 
 % define reconstruction grid
-BFC.XPiezo = Trans.XPiezo;
-BFC.ZPiezo = Trans.ZPiezo;
-BFC.XRecon = Trans.XPiezo;
-BFC.ZRecon = 0:Trans.lambda / 2:100 * Trans.lambda;
-BFC.LensThickness = Trans.lens_thickness;
+P.x_piezo = Trans.XPiezo;
+P.z_piezo = Trans.ZPiezo;
+P.x_recon = Trans.XPiezo;
+P.z_recon = 0:Trans.lambda / 2:100 * Trans.lambda;
+P.lens_thickness = Trans.lens_thickness;
 
 % plot the medium
 figure(1); clf;
@@ -148,7 +148,7 @@ rt.plot.rays(rays_tx);
 rt.plot.rays(rays_rx_all{ind_valid(1)});
 rt.plot.rays(rays_rx_all{ind_valid(end)});
 daspect([1 1 1])
-xlim(rt.util.minmax(BFC.XRecon) * 1e3); ylim(rt.util.minmax(BFC.ZRecon) * 1e3)
+xlim(rt.util.minmax(P.x_recon) * 1e3); ylim(rt.util.minmax(P.z_recon) * 1e3)
 
 % rt.plot.rays(rays_rx);
 

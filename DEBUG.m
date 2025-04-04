@@ -47,33 +47,33 @@ P.f_number = 2;
 c0 = 1540;
 
 % define sound speed per layer
-BFC.medium_soundspeeds = [P.lens_wavespeed,
-                          P.skin_wavespeed,
-                          P.bone_wavespeed,
-                          P.brain_wavespeed];
+P.medium_soundspeeds = [P.lens_wavespeed,
+                        P.skin_wavespeed,
+                        P.bone_wavespeed,
+                        P.brain_wavespeed];
 
-BFC.medium_density = [1.0, 1.0, 1.0, 1.0]; % kg/m^3
+P.medium_density = [1.0, 1.0, 1.0, 1.0]; % kg/m^3
 
 % define  interfaces between tissue layers
-BFC.medium_interfaces = {P.lens_thickness,
-                         [P.bone_curvature, 0, P.lens_thickness + P.distance_trans_bone],
-                         [P.bone_curvature, 0, P.lens_thickness + P.distance_trans_bone + P.bone_thickness]};
+P.medium_interfaces = {P.lens_thickness,
+                       [P.bone_curvature, 0, P.lens_thickness + P.distance_trans_bone],
+                       [P.bone_curvature, 0, P.lens_thickness + P.distance_trans_bone + P.bone_thickness]};
 
-BFC.medium_soundspeeds = BFC.medium_soundspeeds(:).'; % guarantee row vector
-BFC.medium_density = BFC.medium_density(:).'; % guarantee row vector
-BFC.medium_impendace = BFC.medium_soundspeeds .* BFC.medium_density; % kg/(m^2 s)
+P.medium_soundspeeds = P.medium_soundspeeds(:).'; % guarantee row vector
+P.medium_density = P.medium_density(:).'; % guarantee row vector
+P.medium_impendace = P.medium_soundspeeds .* P.medium_density; % kg/(m^2 s)
 
-BFC.medium_interfaces = BFC.medium_interfaces(:).'; % guarantee row vector
+P.medium_interfaces = P.medium_interfaces(:).'; % guarantee row vector
 
 % deremine interface derivatives for normal computation
-BFC.medium_interface_derivatives = cellfun(@rt.util.interface_derivative, BFC.medium_interfaces, 'UniformOutput', false);
+P.medium_interface_derivatives = cellfun(@rt.util.interface_derivative, P.medium_interfaces, 'UniformOutput', false);
 
 % put other variables in BFC
-BFC.XPiezo = P.x_piezo;
-BFC.ZPiezo = P.z_piezo;
-BFC.XRecon = P.x_piezo;
-BFC.ZRecon = 0:P.lambda / 2:100 * P.lambda;
-BFC.LensThickness = P.lens_thickness;
+P.x_piezo = P.x_piezo;
+P.z_piezo = P.z_piezo;
+P.x_recon = P.x_piezo;
+P.z_recon = 0:P.lambda / 2:100 * P.lambda;
+P.lens_thickness = P.lens_thickness;
 
 % compute source location - homogeneous and lens speed of sound
 xs = P.z_source * tan(P.theta_source);
@@ -184,7 +184,7 @@ directivity_fun = @(theta) cos(theta) .* sinc(pi * W / lambda .* sin(theta));
 
 %% Total attenuation along path
 
-att_fun = @(rays) sum(BFC.medium_attenuation .* [rays.length] * 1e2 * (P.Fc / 1e6));
+att_fun = @(rays) sum(P.medium_attenuation .* [rays.length] * 1e2 * (P.Fc / 1e6));
 
 attenuation_tx = att_fun(out.ac_rays_tx);
 attenuation_rx = cellfun(att_fun, out.ac_rays_rx);
@@ -428,69 +428,60 @@ metrics.nc_IQ_x = IQ_xax_nc;
 metrics.ac_IQ_x_peak = max(abs(IQ_xax_ac));
 metrics.nc_IQ_x_peak = max(abs(IQ_xax_nc));
 
+%% DEBUG RAY TRACER
 
+% compute source location - homogeneous and lens speed of sound
+c0 = P.c0;
+xs = P.z_source * tan(P.theta_source);
+vs = [xs; P.z_source];
+ve = [P.x_piezo; P.z_piezo];
+ds = vecnorm(ve - vs);
+tx_delay_lens = ds / P.lens_wavespeed;
+tx_delay_c0 = ds / c0;
+P.x_source = xs;
+P.tx_add_to_ac = min(tx_delay_lens);
+P.tx_add_to_nc = min(tx_delay_c0);
 
-%% DEBUG RAY TRACER 
+x_start = P.x_source;
+z_start = P.z_source;
 
+x_target = P.x_pixel;
+z_target = P.z_pixel;
+to_layer = 4;
 
+% cost fun
+cost_fun = @(theta) rt.ray_bending_tof(theta, x_start, z_start, x_target, z_target, BFC, to_layer);
 
-    % compute source location - homogeneous and lens speed of sound
-    c0 = P.c0;
-    xs = P.z_source * tan(P.theta_source);
-    vs = [xs; P.z_source];
-    ve = [P.x_piezo; P.z_piezo];
-    ds = vecnorm(ve - vs);
-    tx_delay_lens = ds / P.lens_wavespeed;
-    tx_delay_c0 = ds / c0;
-    P.x_source = xs;
-    P.tx_add_to_ac = min(tx_delay_lens);
-    P.tx_add_to_nc = min(tx_delay_c0);
+% determine angle range
+z_lens = P.lens_thickness;
+x_extend = rt.util.minmax(P.x_recon);
+r_left = [x_extend(1) - x_start; z_lens - z_start];
+r_right = [x_extend(2) - x_start; z_lens - z_start];
+angle_left = atan2(r_left(2), r_left(1)) - pi / 2;
+angle_right = atan2(r_right(2), r_right(1)) - pi / 2;
 
+figure(80); clf; scatter(x_start, z_start); hold on; scatter(x_extend(1), z_lens); % daspect([1 1 1])
 
+% coarse grid search
+NAngles = 50;
+theta_vals = linspace(angle_right, angle_left, NAngles);
+[tof_grid, rays_theta] = arrayfun(cost_fun, theta_vals, 'UniformOutput', 0);
+tof_grid = [tof_grid{:}];
 
-    x_start = P.x_source;
-    z_start = P.z_source;
+[~, imin] = min(tof_grid);
+theta0 = theta_vals(imin);
 
-    x_target = P.x_pixel    ;
-    z_target = P.z_pixel    ;
-    to_layer = 4;
+% minimize with fminsearch
+options = optimset('TolX', 1e-6);
+[theta_min, fval, exit_flag, out] = fminsearch(cost_fun, theta0, options);
+[tof, rays] = cost_fun(theta_min);
 
-    % cost fun
-    cost_fun = @(theta) rt.ray_bending_tof(theta, x_start, z_start, x_target, z_target, BFC, to_layer);
-
-    % determine angle range
-    z_lens = BFC.LensThickness;
-    x_extend = rt.util.minmax(BFC.XRecon);
-    r_left = [x_extend(1) - x_start; z_lens - z_start];
-    r_right = [x_extend(2) - x_start; z_lens - z_start];
-    angle_left = atan2(r_left(2), r_left(1)) - pi/2;
-    angle_right = atan2(r_right(2), r_right(1)) - pi/2;
-
-    figure(80); clf; scatter(x_start, z_start);  hold on; scatter(x_extend(1), z_lens); % daspect([1 1 1])
-
-    % coarse grid search
-    NAngles = 50;
-    theta_vals = linspace(angle_right, angle_left, NAngles);
-    [tof_grid, rays_theta] = arrayfun(cost_fun, theta_vals, 'UniformOutput', 0);
-    tof_grid = [tof_grid{:}];
-
-    [~, imin] = min(tof_grid);
-    theta0 = theta_vals(imin);
-
-    % minimize with fminsearch
-    options = optimset('TolX',1e-6);
-    [theta_min,fval,exit_flag,out] = fminsearch(cost_fun, theta0,options);
-    [tof, rays] = cost_fun(theta_min);
-
-
-    % final check, if angle of ray(k).dir and ray(k-1).dir_refracted
-    % withing range
-    theta = acos(dot(rays(end).dir, rays(end-1).dir_refracted));
-    if theta > 0.1
-        tof = NaN; theta_min = NaN; 
-    end
-
-
+% final check, if angle of ray(k).dir and ray(k-1).dir_refracted
+% withing range
+theta = acos(dot(rays(end).dir, rays(end - 1).dir_refracted));
+if theta > 0.1
+    tof = NaN; theta_min = NaN;
+end
 
 figure(99); clf; hold on;
 plot(theta_vals, tof_grid, '.-')
@@ -498,20 +489,20 @@ scatter(theta_min, tof);
 % ylim([0 10e-6])
 xlim(rt.util.minmax(theta_vals))
 
-x_end = 0; z_end= 0;
+x_end = 0; z_end = 0;
 
 % plot the rays
 figure(2); clf;
 hold on
 rt.plot.medium(BFC, x_start, z_start, x_target, z_target, x_end, z_end);
 % rt.plot.rays(rays);
-rt.plot.rays(rays_theta{imin-1});
+rt.plot.rays(rays_theta{imin - 1});
 % rt.plot.rays(rays_theta{imin});
-rt.plot.rays(rays_theta{imin+1});
+rt.plot.rays(rays_theta{imin + 1});
 rt.plot.rays(rays);
 
 % rt.plot.rays(rays_rx);
-xlim(rt.util.minmax(BFC.XRecon) * 1e3); ylim(rt.util.minmax(BFC.ZRecon) * 1e3)
+xlim(rt.util.minmax(P.x_recon) * 1e3); ylim(rt.util.minmax(P.z_recon) * 1e3)
 daspect([1 1 1])
 set(gca, 'ydir', 'reverse')
 

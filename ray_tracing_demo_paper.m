@@ -13,16 +13,16 @@ grid_size = wvl;
 
 % the transducer
 BFC.NElems = 96;
-BFC.XPiezo = (1:BFC.NElems) .* wvl - BFC.NElems / 2 * wvl;
-BFC.ZPiezo = 0 * BFC.XPiezo;
-BFC.LensThickness = 10 * wvl;
+P.x_piezo = (1:BFC.NElems) .* wvl - BFC.NElems / 2 * wvl;
+P.z_piezo = 0 * P.x_piezo;
+P.lens_thickness = 10 * wvl;
 
 % reconstruction grid
-% BFC.XRecon = (1:BFC.NElems) .* wvl - BFC.NElems * grid_size/2;
-BFC.XRecon = BFC.XPiezo(1):grid_size:BFC.XPiezo(end);
-BFC.ZRecon = 0:grid_size:7e-3;
-BFC.Nx = numel(BFC.XRecon);
-BFC.Nz = numel(BFC.ZRecon);
+% P.x_recon = (1:BFC.NElems) .* wvl - BFC.NElems * grid_size/2;
+P.x_recon = P.x_piezo(1):grid_size:P.x_piezo(end);
+P.z_recon = 0:grid_size:7e-3;
+BFC.Nx = numel(P.x_recon);
+BFC.Nz = numel(P.z_recon);
 
 % Some points sources
 % BFC.NSources = 9;
@@ -30,20 +30,20 @@ BFC.Nz = numel(BFC.ZRecon);
 % BFC.XS = linspace(-2, 2, BFC.NSources) * 1e-3;
 % BFC.addToDelay = zeros(1, BFC.NSources);
 BFC.NSources = 1;
-BFC.ZS = -1; % -5e-3; BFC.ZPiezo(32 + 16);
-BFC.XS = -20e-3; BFC.XPiezo(32 + 16);
+BFC.ZS = -1; % -5e-3; P.z_piezo(32 + 16);
+BFC.XS = -20e-3; P.x_piezo(32 + 16);
 BFC.addToDelay = zeros(1, BFC.NSources);
 
 % setup the medium
 % USED FOR FIRST FIGURE
-BFC.medium_soundspeeds = [1000 1600 3200 1570];
-BFC.medium_interfaces = {BFC.LensThickness, [-2500 25 0.05 2.4e-3], [-1600 25 0.01 4.5e-3]};
+P.medium_soundspeeds = [1000 1600 3200 1570];
+P.medium_interfaces = {P.lens_thickness, [-2500 25 0.05 2.4e-3], [-1600 25 0.01 4.5e-3]};
 % ALSO NICE:
-% BFC.medium_interfaces = {BFC.LensThickness, [1200 20 0.0 3e-3], [1000 20 -0.017 5.e-3]};
-% BFC.medium_interfaces = {BFC.LensThickness, [-1200 20 0.0 3e-3], [-1000 20 0.017 5.e-3]};
+% P.medium_interfaces = {P.lens_thickness, [1200 20 0.0 3e-3], [1000 20 -0.017 5.e-3]};
+% P.medium_interfaces = {P.lens_thickness, [-1200 20 0.0 3e-3], [-1000 20 0.017 5.e-3]};
 
 % determine interface derivatives for normal computation
-BFC.medium_interface_derivatives = cellfun(@rt.util.interface_derivative, BFC.medium_interfaces, 'UniformOutput', false);
+P.medium_interface_derivatives = cellfun(@rt.util.interface_derivative, P.medium_interfaces, 'UniformOutput', false);
 
 %% Plot Transducer and Tissue Interfaces
 
@@ -56,13 +56,13 @@ x_target = 2e-3;
 z_target = 1.1e-3;
 
 ke = 80;
-x_end = BFC.XPiezo(ke);
-z_end = BFC.ZPiezo(ke);
+x_end = P.x_piezo(ke);
+z_end = P.z_piezo(ke);
 
 figure(1); clf;
 hold on
 rt.plot.medium(BFC, x_start, z_start, x_target, z_target, x_end, z_end);
-xlim(rt.util.minmax(BFC.XRecon) * 1e3); ylim(rt.util.minmax(BFC.ZRecon) * 1e3)
+xlim(rt.util.minmax(P.x_recon) * 1e3); ylim(rt.util.minmax(P.z_recon) * 1e3)
 daspect([1 1 1])
 set(gca, 'ydir', 'reverse')
 
@@ -79,8 +79,8 @@ cost_fun = @(theta) rt.ray_bending_tof(theta, x_start, z_start, x_target, z_targ
 % cost_fun = @(theta) rt.ray_bending_tof(theta, x_end, z_end, x_target, z_target, BFC, to_layer);
 
 % refine angle range
-z_lens = BFC.LensThickness;
-x_extend = rt.util.minmax(BFC.XRecon);
+z_lens = P.lens_thickness;
+x_extend = rt.util.minmax(P.x_recon);
 r_left = [x_extend(1) - x_start; z_lens - z_start];
 r_right = [x_extend(2) - x_start; z_lens - z_start];
 angle_left = atan2(r_left(2), r_left(1)) - pi / 2;
@@ -110,7 +110,7 @@ hold on
 rt.plot.medium(BFC, x_start, z_start, x_target, z_target, x_end, z_end);
 rt.plot.rays(rays_tx);
 rt.plot.rays(rays_rx);
-xlim(rt.util.minmax(BFC.XRecon) * 1e3); ylim(rt.util.minmax(BFC.ZRecon) * 1e3)
+xlim(rt.util.minmax(P.x_recon) * 1e3); ylim(rt.util.minmax(P.z_recon) * 1e3)
 daspect([1 1 1])
 set(gca, 'ydir', 'reverse')
 
@@ -119,16 +119,16 @@ return
 %% Compute Refraction Corrected Time Delays for all Pixels
 
 % make layer mask
-[X, Z] = meshgrid(BFC.XRecon, BFC.ZRecon);
+[X, Z] = meshgrid(P.x_recon, P.z_recon);
 layer_mask = ones(BFC.Nz, BFC.Nx);
-for ki = 1:numel(BFC.medium_interfaces)
-    z_int = rt.util.segeval(BFC.medium_interfaces{ki}, BFC.XRecon);
+for ki = 1:numel(P.medium_interfaces)
+    z_int = rt.util.segeval(P.medium_interfaces{ki}, P.x_recon);
     msk = Z > z_int;
     layer_mask(msk) = layer_mask(msk) + 1;
 end
 
 figure(3); clf;
-imagesc(BFC.XRecon * 1e3, BFC.ZRecon * 1e3, layer_mask)
+imagesc(P.x_recon * 1e3, P.z_recon * 1e3, layer_mask)
 hold on
 rt.plot.medium(BFC);
 daspect([1 1 1])
@@ -139,8 +139,8 @@ skip = 1; % if 1, compute every pixel, if higher, number of elements to skip
 fprintf('Computing LUT for grid size %i x %i, compute points %i x %i\n\n\n', ...
     BFC.Nx, BFC.Nz, round(BFC.Nx / skip), round(BFC.Nz / skip));
 
-xr = BFC.XRecon(1:skip:end);
-zr = BFC.ZRecon(1:skip:end);
+xr = P.x_recon(1:skip:end);
+zr = P.z_recon(1:skip:end);
 Nxr = numel(xr);
 Nzr = numel(zr);
 [Xr, Zr] = meshgrid(xr, zr);
@@ -165,7 +165,7 @@ for kx = 1:Nxr
         end
 
         for ke = 1:1 %BFC.NElems
-            [~, tof] = rt.ray_bending(BFC.XPiezo(ke), BFC.ZPiezo(ke), x_target, z_target, BFC, to_layer);
+            [~, tof] = rt.ray_bending(P.x_piezo(ke), P.z_piezo(ke), x_target, z_target, BFC, to_layer);
             LUT_R(kz, kx, ke) = tof;
         end
     end
@@ -185,21 +185,21 @@ ks = 1; ke = 1;
 
 figure(99); clf;
 subplot(121)
-imagesc(BFC.XRecon * 1e3, BFC.ZRecon * 1e3, LUT_T_interp(:, :, ks))
+imagesc(P.x_recon * 1e3, P.z_recon * 1e3, LUT_T_interp(:, :, ks))
 hold on
-contour(BFC.XRecon * 1e3, BFC.ZRecon * 1e3, LUT_T_interp(:, :, ks), 50, 'k')
+contour(P.x_recon * 1e3, P.z_recon * 1e3, LUT_T_interp(:, :, ks), 50, 'k')
 rt.plot.medium(BFC)
 daspect([1 1 1])
 
 subplot(122)
-imagesc(BFC.XRecon * 1e3, BFC.ZRecon * 1e3, LUT_R_interp(:, :, ke))
+imagesc(P.x_recon * 1e3, P.z_recon * 1e3, LUT_R_interp(:, :, ke))
 hold on
-contour(BFC.XRecon * 1e3, BFC.ZRecon * 1e3, LUT_R_interp(:, :, ke), 50, 'k')
+contour(P.x_recon * 1e3, P.z_recon * 1e3, LUT_R_interp(:, :, ke), 50, 'k')
 daspect([1 1 1])
 rt.plot.medium(BFC)
 
 figure(101); clf;
-imagesc(BFC.XRecon * 1e3, BFC.ZRecon * 1e3, layer_mask)
+imagesc(P.x_recon * 1e3, P.z_recon * 1e3, layer_mask)
 hold on
 rt.plot.medium(BFC);
 daspect([1 1 1])

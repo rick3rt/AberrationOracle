@@ -1,4 +1,4 @@
-function ray = ray_traverse_spline(ray, BFC)
+function ray = ray_traverse_spline(ray, P)
 
     import rt.raytheory.*
 
@@ -8,13 +8,13 @@ function ray = ray_traverse_spline(ray, BFC)
 
     if any(isnan(ray.dir)); ray.length = inf; return; end
     % test self intersection:
-    %   max(1,ray.medium_idx-1):numel(BFC.medium_interfaces)
+    %   max(1,ray.medium_idx-1):numel(P.medium_interfaces)
     % otherwise:
-    %   ray.medium_idx:numel(BFC.medium_interfaces)
+    %   ray.medium_idx:numel(P.medium_interfaces)
 
-    %for k = ray.medium_idx:numel(BFC.medium_interfaces(1:to_layer))
+    %for k = ray.medium_idx:numel(P.medium_interfaces(1:to_layer))
     k = ray.medium_idx;
-    sp_test = BFC.medium_interfaces{k};
+    sp_test = P.medium_interfaces{k};
     if isstruct(sp_test)
         [~, x_intersect] = raylength_spline(sp_test, ray.start, ray.dir, 0);
         % x_intersect = intersect_spline_line(sp_test, ray.start, ray.dir);
@@ -51,13 +51,13 @@ function ray = ray_traverse_spline(ray, BFC)
     end
 
     % determine normal;
-    N = sign(ray.dir(2)) * -1 * [rt.util.segeval(BFC.medium_interface_derivatives{ray.hit_idx}, ray.intersection(1)); -1];
-    % N =- [polyval(BFC.medium_interface_derivatives{ray.hit_idx}, ray.intersection(1)); -1];
+    N = sign(ray.dir(2)) * -1 * [rt.util.segeval(P.medium_interface_derivatives{ray.hit_idx}, ray.intersection(1)); -1];
+    % N =- [polyval(P.medium_interface_derivatives{ray.hit_idx}, ray.intersection(1)); -1];
     N = N ./ norm(N);
     ray.normal = N;
     R = ray.dir;
-    c1 = BFC.medium_soundspeeds(ray.medium_idx);
-    c2 = BFC.medium_soundspeeds(ray.medium_idx + 1);
+    c1 = P.medium_soundspeeds(ray.medium_idx);
+    c2 = P.medium_soundspeeds(ray.medium_idx + 1);
 
     % ray.theta_in = acos(dot(ray.normal,ray.dir));
 

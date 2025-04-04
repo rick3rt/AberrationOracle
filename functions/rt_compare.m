@@ -2,51 +2,24 @@ function [P, BFC, out] = rt_compare(P, BFC)
     % compare multi layer ray tracing with homogenous assumption
     % P: parameters struct
 
-    if ~exist('BFC','var'); BFC = struct(); end
+    if ~exist('BFC', 'var'); BFC = struct(); end
 
     % prepare ray tracer
     % ===========================================================
 
-    % TODO IMPLEMENT ATTENUATION LENS? (FIX POINT SOURCE STUFF)
-    if ~isfield(BFC, 'medium_attenuation')
-        BFC.medium_attenuation = [0.0, 0.54, 6.9, 0.6]; % dB/(MHz*cm)
-    end
-
-    % define sound speed per layer
-    if ~isfield(BFC, 'medium_soundspeeds')
-        BFC.medium_soundspeeds = [P.lens_wavespeed,
-                                  P.skin_wavespeed,
-                                  P.bone_wavespeed,
-                                  P.brain_wavespeed];
-    end
-
-    if ~isfield(BFC, 'medium_density')
-        BFC.medium_density = [1.2, 1.02, 2.0, 1.001]; % kg/m^3
-    end
-
-    % define  interfaces between tissue layers
-    if ~isfield(BFC, 'medium_interfaces')
-        BFC.medium_interfaces = {P.lens_thickness,
-                                 [P.bone_curvature, 0, P.lens_thickness + P.distance_trans_bone],
-                                 [P.bone_curvature, 0, P.lens_thickness + P.distance_trans_bone + P.bone_thickness]};
-    end
-
-    %% compute derived properties and pack other settings in BFC
-    BFC.medium_soundspeeds = BFC.medium_soundspeeds(:).'; % guarantee row vector
-    BFC.medium_density = BFC.medium_density(:).'; % guarantee row vector
-    BFC.medium_interfaces = BFC.medium_interfaces(:).'; % guarantee row vector
+    %% compute derived properties and pack other settings in P
+    P.medium_soundspeeds = P.medium_soundspeeds(:).'; % guarantee row vector
+    P.medium_density = P.medium_density(:).'; % guarantee row vector
+    P.medium_interfaces = P.medium_interfaces(:).'; % guarantee row vector
 
     % derived properties
-    BFC.medium_impendace = BFC.medium_soundspeeds .* BFC.medium_density; % kg/(m^2 s)
+    P.medium_impendace = P.medium_soundspeeds .* P.medium_density; % kg/(m^2 s)
     % deremine interface derivatives for normal computation
-    BFC.medium_interface_derivatives = cellfun(@rt.util.interface_derivative, BFC.medium_interfaces, 'UniformOutput', false);
+    P.medium_interface_derivatives = cellfun(@rt.util.interface_derivative, P.medium_interfaces, 'UniformOutput', false);
 
-    % put other variables in BFC
-    BFC.XPiezo = P.x_piezo;
-    BFC.ZPiezo = P.z_piezo;
-    BFC.XRecon = P.x_piezo;
-    BFC.ZRecon = 0:P.lambda / 2:100 * P.lambda;
-    BFC.LensThickness = P.lens_thickness;
+    % put other variables in P
+    P.x_recon = P.x_piezo;
+    P.z_recon = 0:P.lambda / 2:100 * P.lambda;
 
     %% ===========================================================
 
@@ -74,7 +47,7 @@ function [P, BFC, out] = rt_compare(P, BFC)
 
     %% ray tracing from source to pixel, and pixel to all elements
     % ===========================================================
-    to_layer = numel(BFC.medium_soundspeeds); % trace to brain layer
+    to_layer = numel(P.medium_soundspeeds); % trace to brain layer
     [rays_tx, tof_tx, theta_tx] = rt.ray_bending(P.x_source, P.z_source, P.x_pixel, P.z_pixel, BFC, to_layer);
     tof_tx = tof_tx - P.tx_add_to_ac; % correct propagation time in lens
 

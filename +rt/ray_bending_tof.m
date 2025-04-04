@@ -1,4 +1,4 @@
-function [tof, ray] = ray_bending_tof(theta, x_start, z_start, x_target, z_target, BFC, to_layer)
+function [tof, ray] = ray_bending_tof(P, theta, x_start, z_start, x_target, z_target, to_layer)
 
     % log_info = @(fmt, varargin) fprintf(['[%s] ' fmt], mfilename, varargin{:});
     log_info = @(varargin) [];
@@ -10,14 +10,14 @@ function [tof, ray] = ray_bending_tof(theta, x_start, z_start, x_target, z_targe
     ray.medium_idx = 1;
     ray.start = [x_start; z_start];
     ray.dir = rt.util.vec_rotate(theta);
-    ray = rt.raytheory.ray_traverse(ray, BFC);
+    ray = rt.raytheory.ray_traverse(ray, P);
 
     if ray.length > 1e6; tof = 1e10 + theta; return; end
     if any(isnan(ray.dir_refracted)); tof = 1e10 + theta; return; end
 
     % cast subsequent rays traversing the scene if any object hit
     k = 1; % num hits
-    while ray(k).hit_idx > 0
+    while ray(k).hit_idx > 0 
         log_info('ray tracing k = %i\n', k);
         k = k + 1;
         ray(k).critical_angle = 0;
@@ -32,7 +32,7 @@ function [tof, ray] = ray_bending_tof(theta, x_start, z_start, x_target, z_targe
         % if ray points upwards, break
         if (ray(k).dir(2) < 0); tof = 1e10 + theta; return; end
 
-        ray(k) = rt.raytheory.ray_traverse(ray(k), BFC);
+        ray(k) = rt.raytheory.ray_traverse(ray(k), P);
     end
 
     if ray(k).medium_idx ~= to_layer % k < to_layer +1
@@ -49,7 +49,7 @@ function [tof, ray] = ray_bending_tof(theta, x_start, z_start, x_target, z_targe
     ray(k).dir = tmp ./ ray(k).length;
 
     % compute tof
-    tof = sum([ray(1:to_layer).length] ./ BFC.medium_soundspeeds(1:to_layer));
+    tof = sum([ray(1:to_layer).length] ./ P.medium_soundspeeds(1:to_layer));
 
 end
 

@@ -16,7 +16,7 @@ function [metrics, data, figs] = rt_test_improvement(P, BFC, out, test_resolutio
 
     %% Total attenuation along path
 
-    att_fun = @(rays) sum(BFC.medium_attenuation .* [rays.length] * 1e2 * (P.Fc / 1e6));
+    att_fun = @(rays) sum(P.medium_attenuation .* [rays.length] * 1e2 * (P.Fc / 1e6));
 
     attenuation_tx = att_fun(out.ac_rays_tx);
     attenuation_rx = cellfun(att_fun, out.ac_rays_rx);
@@ -37,8 +37,6 @@ function [metrics, data, figs] = rt_test_improvement(P, BFC, out, test_resolutio
     % plot(TF_rt)
 
     %% Generate RF
-    P.Fs = 20 * P.Fc; % Sampling frequency
-    P.num_cycles = 3;
 
     % Set the impulse response and excitation of the emit aperture
     image_pulse = sin(2 * pi * P.Fc * (0:1 / P.Fs:P.num_cycles / P.Fc)); % BP66 %,  sin(2*pi*fc*(0:1/fs:1/fc)); % BP100 %
@@ -130,7 +128,7 @@ function [metrics, data, figs] = rt_test_improvement(P, BFC, out, test_resolutio
     cmap_lines = lines(2);
     % cmap_lines = flip(cmap_lines);
 
-    t_lens_cor = 2*(1/P.lens_wavespeed - 1/P.c0)*P.lens_thickness;
+    t_lens_cor = 2 * (1 / P.lens_wavespeed - 1 / P.c0) * P.lens_thickness;
 
     figure(201); clf;
     imagesc(P.x_piezo * 1e3, t_vec_full * 1e6, RF_delayed_full)
@@ -139,13 +137,13 @@ function [metrics, data, figs] = rt_test_improvement(P, BFC, out, test_resolutio
 
     plot(P.x_piezo * 1e3, out.ac_tof_round_trip * 1e6, '--', 'color', cmap_lines(1, :), 'LineWidth', 1);
     plot(P.x_piezo(out.ac_f_number_idx) * 1e3, out.ac_tof_round_trip(out.ac_f_number_idx) * 1e6, '-', 'color', cmap_lines(1, :), 'LineWidth', 2);
-    plot(P.x_piezo * 1e3, (t_lens_cor+out.nc_tof_round_trip) * 1e6, '--', 'color', cmap_lines(2, :), 'LineWidth', 1);
-    plot(P.x_piezo(out.nc_f_number_idx) * 1e3, (t_lens_cor+out.nc_tof_round_trip(out.nc_f_number_idx)) * 1e6, '-', 'color', cmap_lines(2, :), 'LineWidth', 2);
-   
+    plot(P.x_piezo * 1e3, (t_lens_cor + out.nc_tof_round_trip) * 1e6, '--', 'color', cmap_lines(2, :), 'LineWidth', 1);
+    plot(P.x_piezo(out.nc_f_number_idx) * 1e3, (t_lens_cor + out.nc_tof_round_trip(out.nc_f_number_idx)) * 1e6, '-', 'color', cmap_lines(2, :), 'LineWidth', 2);
+
     data.RF = RF_delayed_full;
     data.tvec = t_vec_full;
     data.ttp = ttp;
-    
+
     % keyboard
 
     if ~test_resolution

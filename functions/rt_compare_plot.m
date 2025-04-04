@@ -16,9 +16,8 @@ function f_all = rt_compare_plot(P, BFC, out)
     rt.plot.rays(out.ac_rays_rx{out.ac_f_number_idx(1)});
     rt.plot.rays(out.ac_rays_rx{out.ac_f_number_idx(end)});
     daspect([1 1 1])
-    xlim(rt.util.minmax(BFC.XRecon) * 1e3); ylim(rt.util.minmax(BFC.ZRecon) * 1e3)
+    xlim(rt.util.minmax(P.x_recon) * 1e3); ylim(rt.util.minmax(P.z_recon) * 1e3)
     title(['  ' P.name])
-    
 
     % plot homogeneous paths
     plot([P.x_piezo(out.nc_f_number_idx(1)) P.x_pixel] * 1e3, [P.z_piezo(out.nc_f_number_idx(1)) P.z_pixel] * 1e3, 'k--')
@@ -40,7 +39,7 @@ function f_all = rt_compare_plot(P, BFC, out)
     ylabel('Travel time \mus')
     xlabel('Lateral Element Position (mm)')
     title(['  ' P.name])
-    
+
     subplot(312)
     plot(P.x_piezo * 1e3, out.error_tof_round_trip_relative * 100, 'k', 'linewidth', 2)
     ylabel({'Relative Error', 'Wave period'})
