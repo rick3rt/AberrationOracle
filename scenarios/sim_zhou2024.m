@@ -88,7 +88,7 @@ Ps = P;
 Ps.theta_source = deg2rad(linspace(-6, 6, 7));
 Ps.z_source = repelem(Ps.z_source, numel(Ps.theta_source));
 result = rt2_simulate_multi_source(Ps);
-figs = rt2_plot_results_psf(Ps, result);
+figs = rt2_plot_results_psf_multisource(Ps, result);
 
 %% save figures
 fig_output_path = fullfile('figs2', CASE_NAME, P.name);
