@@ -1,7 +1,12 @@
 clear
 clc
 
-CASE_NAME = 'mao_PA';
+% This case is based on the paper:
+%   Mao, Q., Feng, Y., Tao, C., & Liu, X. (2024). Ultrasound-assisted aberration correction
+%   of transcranial photoacoustic imaging based on angular spectrum theory.
+%   Photoacoustics, 100665. https://doi.org/10.1016/j.pacs.2024.100665
+
+CASE_NAME = 'mao2024';
 
 % set transducer frequency
 P.Fc = 2.5e6;

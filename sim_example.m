@@ -1,6 +1,8 @@
 clear
 clc
 
+addpath('functions')
+
 % set transducer frequency
 P.Fc = 7.5e6;
 P.Fs = 20 * P.Fc; % Sampling frequency

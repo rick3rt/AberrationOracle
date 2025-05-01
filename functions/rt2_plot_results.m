@@ -8,15 +8,7 @@ function figs = rt2_plot_results(P, result)
 
     figs = {};
 
-    % ===========================================================
-    % getter_fun = @(field) cellfun(@(m)metrics.(m).(field), fieldnames(metrics));
-    % f = figure(11); clf;
-    % figs{end + 1} = f;
-    % bar(getter_fun('peak'))
-    % xticklabels(modes)
-
     rf_plot = rf_data_full;
-    % rf_plot = rf_data;
     LOPTS = {'linewidth', 1.5};
 
     f = figure(12); clf;
@@ -43,9 +35,6 @@ function figs = rt2_plot_results(P, result)
     f.Name = 'medium';
     figs{end + 1} = f;
     rt.plot.medium(P);
-    % yline(P.z_pixel * 1e3)
-    % xline(P.x_pixel * 1e3)
-    % yline(z_c0*1e3)
 
     % plot refracted rays
     rt.plot.rays(rays_tx);
@@ -148,14 +137,6 @@ function figs = rt2_plot_results(P, result)
     subplot(122)
     bar(res_z * 1e3); xticklabels(modes)
     ylabel('axial resolution (mm)')
-    %
-    %
-    % imp = (res_x-res_x(refIdx))./res_x;
-    % mt = modes{refIdx};
-    % for k = 1:NModes
-    %     m = modes{k};
-    %     fprintf('lateral res %s-%s: %.2f\n', m, mt, imp(k));
-    % end
 
     imp = (res_x - res_x(refIdx)) ./ res_x;
     mt = modes{refIdx};
@@ -181,7 +162,6 @@ function figs = rt2_plot_results(P, result)
     for km = 1:NModes
         subplot(1, NModes, km)
         m = modes{km};
-        %imagesc(data_psf.(m).xv*1e3,data_psf.(m).zv*1e3, abs(data_psf.(m).IQ_grid))
         imagesc(data_psf.(m).xv * 1e3, data_psf.(m).zv * 1e3, BMode(:, :, km));
         hold on
         scatter(P.x_pixel * 1e3, P.z_pixel * 1e3, 'rx')

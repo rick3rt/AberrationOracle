@@ -121,22 +121,19 @@ function data = rt2_compute_tof_grid_optim(P, mode, rfdata)
         PeriPolyOrder = p.pieces;
     end
 
-    if recon_to == 3
-        p = P.medium_interfaces{3};
-        if ~isstruct(p)
-            zp = rt.util.segeval(p, Pars.xv_recon);
-            idx_min = find(Pars.zv_recon >= min(zp), 1, 'first');
-            idx_max = find(Pars.zv_recon <= max(zp), 1, 'last');
-            EndoParabIn = [p idx_min - 1 idx_max - 1];
-            EndoPolyOrder = numel(p) - 1;
-        else
-            EndoParabIn = p;
-            EndoPolyOrder = p.pieces;
-        end
+    % if recon_to == 3
+    p = P.medium_interfaces{3};
+    if ~isstruct(p)
+        zp = rt.util.segeval(p, Pars.xv_recon);
+        idx_min = find(Pars.zv_recon >= min(zp), 1, 'first');
+        idx_max = find(Pars.zv_recon <= max(zp), 1, 'last');
+        EndoParabIn = [p idx_min - 1 idx_max - 1];
+        EndoPolyOrder = numel(p) - 1;
     else
-        EndoParabIn = [0 0 0 0 0];
-        EndoPolyOrder = 2;
+        EndoParabIn = p;
+        EndoPolyOrder = p.pieces;
     end
+    %
 
     Pars.shape_factor_aniso = 1;
     Pars.lens_thickness = P.lens_thickness;
@@ -162,10 +159,7 @@ function data = rt2_compute_tof_grid_optim(P, mode, rfdata)
     Pars.SubApertureApodis = 1;
     Pars.PeriPolyOrder = PeriPolyOrder;
     Pars.EndoPolyOrder = EndoPolyOrder;
-    % Pars.img_width = range(P.x_recon);
-    % Pars.pixel_size = P.lambda/4;
-    % Pars.img_height = range(P.z_recon);
-
+  
     Pars.X_El = P.x_piezo;
     Pars.Z_El = P.z_piezo;
     Pars.PeriParabIn = PeriParabIn;
@@ -180,7 +174,7 @@ function data = rt2_compute_tof_grid_optim(P, mode, rfdata)
         Pars.tissue_c = P.c0;
     end
 
-    [data3l, ~] = threeLayerReconWrapper(Pars, rfdata.RF, rfdata.RF);
+    [data3l, ~] = rt.recon.three_layer_recon_wrapper(Pars, rfdata.RF, rfdata.RF);
 
     perm = @(x) permute(x, [2 3 1]);
     if Pars.recon_to == 1
