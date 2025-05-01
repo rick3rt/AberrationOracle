@@ -51,12 +51,12 @@ P = rt2_derived_parameters(P);
 % =============================================================================
 % Plot medium
 % =============================================================================
-%%
+
 figure(1); clf;
 rt.plot.medium(P);
-yline(P.z_pixel*1e3)
-xline(P.x_pixel*1e3)
-% yline(z_c0*1e3)
+yline(P.z_pixel * 1e3)
+xline(P.x_pixel * 1e3)
+
 %% Compute
 
 data = struct();
@@ -77,10 +77,9 @@ metrics = rt2_compute_max_intensity(P, data, rf_data);
 modes = fieldnames(metrics);
 getter_fun = @(field) cellfun(@(m)metrics.(m).(field), fieldnames(metrics));
 
-figure(11);clf;
+figure(11); clf;
 bar(getter_fun('peak'))
 xticklabels(modes)
-
 
 rf_plot = rf_data_full;
 % rf_plot = rf_data;
@@ -95,11 +94,7 @@ plot(P.x_piezo * 1e3, data.AC.tof_round_trip * 1e6, LOPTS{:});
 plot(P.x_piezo * 1e3, data.NC.tof_round_trip * 1e6, LOPTS{:});
 plot(P.x_piezo * 1e3, data.LC.tof_round_trip * 1e6, LOPTS{:});
 
-
 %%
-
-
-
 
 %% reconstruct PSF
 fprintf('Computing PSFs...\n')
@@ -114,25 +109,23 @@ data_psf.(m) = rt2_compute_psf(P, rf_data_full, m);
 %%
 
 modes = fieldnames(data_psf);
-NModes = numel(modes); 
+NModes = numel(modes);
 
-figure(21); clf; hold on 
+figure(21); clf; hold on
 for km = 1:NModes
     m = modes{km};
-    plot(data_psf.(m).xv*1e3, abs(data_psf.(m).IQ_line), 'DisplayName',m)
+    plot(data_psf.(m).xv * 1e3, abs(data_psf.(m).IQ_line), 'DisplayName', m)
 end
 legend
 
 %%
 
-figure(22); clf; 
+figure(22); clf;
 for km = 1:NModes
     subplot(1, NModes, km)
     m = modes{km};
-    imagesc(data_psf.(m).xv*1e3,data_psf.(m).zv*1e3, abs(data_psf.(m).IQ_grid))
+    imagesc(data_psf.(m).xv * 1e3, data_psf.(m).zv * 1e3, abs(data_psf.(m).IQ_grid))
     title(m)
-    colormap bone 
+    colormap bone
     daspect([1 1 1])
 end
-
-

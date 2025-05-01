@@ -105,6 +105,7 @@ function data = rt_compute_grid_homogeneous(P, Z, X)
     tx_delay_c0 = dist_se / P.c0;
     delay_in_lens = min(tx_delay_c0);
     t_lens_cor = 2 * (1 / P.medium_soundspeeds(1) - 1 / P.c0) * P.lens_thickness;
+    Z = Z - P.lens_thickness;
     % P.medium_soundspeeds(1) = lens wavespeed
 
     % tof_tx = vecnorm(v_pixel - v_source) / P.c0 - delay_in_lens; % correct for point source propagation in lens

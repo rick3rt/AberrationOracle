@@ -1,7 +1,7 @@
 function data = rt2_compute_psf(P, rfdata, mode)
-    
+
     fprintf('=============================\n')
-    fprintf('COMPUTING PSF FOR MODE: %s\n',mode);
+    fprintf('COMPUTING PSF FOR MODE: %s\n', mode);
     fprintf('=============================\n')
 
     switch mode
@@ -38,13 +38,13 @@ function data = rt2_compute_psf(P, rfdata, mode)
             for kx = 1:Nx
                 tau = reshape(data.tof_round_trip(:, kx, :), Nz, P.num_elements);
                 IQ_interp = rt.util.interp1_per_channel(tvec, IQ, tau, 'cubic');
-                IQ_grid(:, kx) = sum(IQ_interp, 2,'omitmissing');
+                IQ_grid(:, kx) = sum(IQ_interp, 2, 'omitmissing');
             end
 
         case 'NC'
 
-            span_lambda_x = 12;
-            span_lambda_z = 30;
+            span_lambda_x = 15;
+            span_lambda_z = 50;
             xv = P.x_pixel + (-span_lambda_x * P.lambda:P.lambda / 4:span_lambda_x * P.lambda);
             zv = P.z_pixel + (-span_lambda_z * P.lambda:P.lambda / 4:span_lambda_z * P.lambda);
             Nx = numel(xv); Nz = numel(zv);
@@ -63,22 +63,23 @@ function data = rt2_compute_psf(P, rfdata, mode)
             end
     end
 
-    [~, kz, kx] = maxij(IQ_grid);
+    [peak, kz, kx] = maxij(abs(IQ_grid));
 
-    span_x = 10 * 4; % 
+    span_x = 10 * 4; %
     span_z = 10 * 4; % assuming pixel size lambda/4
     ind_x = kx + (-span_x:span_x);
     ind_z = kz + (-span_z:span_z);
 
-    data.IQ_grid = IQ_grid(ind_z,ind_x);
+    data.IQ_grid = IQ_grid(ind_z, ind_x);
     data.xv = xv(ind_x);
     data.zv = zv(ind_z);
     data.IQ_line = IQ_grid(kz, ind_x);
     data.IQ_line_z = IQ_grid(ind_z, kx);
-    data.kz = span_z+1;
-    data.kz = span_x+1;
+    data.kz = span_z + 1;
+    data.kz = span_x + 1;
+    data.peak = abs(peak);
 
-    % determine fwhm 
+    % determine fwhm
     data.res_x = fwhm(abs(data.IQ_line), data.xv);
     data.res_z = fwhm(abs(data.IQ_line_z), data.zv);
 
@@ -89,8 +90,10 @@ function data = rt2_compute_tof_grid_optim(P, mode, rfdata)
     switch mode
         case 'LC' % lens corrected
             recon_to = 1;
+            tissue_c = P.c0;
         case 'AC' % full aberration corrected
-            recon_to = 3;
+            recon_to = numel(P.medium_soundspeeds)-1;
+            tissue_c = P.medium_soundspeeds(2);
     end
 
     v_source = [P.x_source; P.z_source];
@@ -100,25 +103,40 @@ function data = rt2_compute_tof_grid_optim(P, mode, rfdata)
     delay_in_lens = min(tx_delay_lens);
 
     Pars = struct();
-    span = 12 * P.lambda;
+    span = 20 * P.lambda;
     Pars.xv_recon = P.x_pixel + (-span:P.lambda / 4:span);
     Pars.zv_recon = P.z_recon(1):P.lambda / 4:P.z_recon(end);
 
     Pars.recon_to = recon_to;
 
     p = P.medium_interfaces{2};
-    zp = rt.util.segeval(p, Pars.xv_recon);
-    idx_min = find(Pars.zv_recon >= min(zp), 1, 'first');
-    idx_max = find(Pars.zv_recon <= max(zp), 1, 'last');
-    PeriParabIn = [p idx_min - 1 idx_max - 1];
-    PeriPolyOrder = numel(p) - 1;
+    if ~isstruct(p)
+        zp = rt.util.segeval(p, Pars.xv_recon);
+        idx_min = find(Pars.zv_recon >= min(zp), 1, 'first');
+        idx_max = find(Pars.zv_recon <= max(zp), 1, 'last');
+        PeriParabIn = [p idx_min - 1 idx_max - 1];
+        PeriPolyOrder = numel(p) - 1;
+    else
+        PeriParabIn = p;
+        PeriPolyOrder = p.pieces;
+    end
 
-    p = P.medium_interfaces{3};
-    zp = rt.util.segeval(p, Pars.xv_recon);
-    idx_min = find(Pars.zv_recon >= min(zp), 1, 'first');
-    idx_max = find(Pars.zv_recon <= max(zp), 1, 'last');
-    EndoParabIn = [p idx_min - 1 idx_max - 1];
-    EndoPolyOrder = numel(p) - 1;
+    if recon_to == 3
+        p = P.medium_interfaces{3};
+        if ~isstruct(p)
+            zp = rt.util.segeval(p, Pars.xv_recon);
+            idx_min = find(Pars.zv_recon >= min(zp), 1, 'first');
+            idx_max = find(Pars.zv_recon <= max(zp), 1, 'last');
+            EndoParabIn = [p idx_min - 1 idx_max - 1];
+            EndoPolyOrder = numel(p) - 1;
+        else
+            EndoParabIn = p;
+            EndoPolyOrder = p.pieces;
+        end
+    else
+        EndoParabIn = [0 0 0 0 0];
+        EndoPolyOrder = 2;
+    end
 
     Pars.shape_factor_aniso = 1;
     Pars.lens_thickness = P.lens_thickness;
@@ -131,8 +149,12 @@ function data = rt2_compute_tof_grid_optim(P, mode, rfdata)
     Pars.max_error_receive_angle = deg2rad(2.5);
     Pars.Fs = P.Fs;
     Pars.lens_c = P.medium_soundspeeds(1);
-    Pars.tissue_c = P.medium_soundspeeds(2);
-    Pars.brain_c = P.medium_soundspeeds(4);
+    Pars.tissue_c = tissue_c;
+    if recon_to == 3
+        Pars.brain_c = P.medium_soundspeeds(4);
+    else
+        Pars.brain_c = P.medium_soundspeeds(3);
+    end
     Pars.axial_c = P.medium_soundspeeds(3);
     Pars.radial_c = P.medium_soundspeeds(3);
     Pars.n_cores = 12;
@@ -164,6 +186,9 @@ function data = rt2_compute_tof_grid_optim(P, mode, rfdata)
     if Pars.recon_to == 1
         tof_rt = perm (data3l.Time_T_Tissue) + perm(data3l.Time_R_Tissue) - delay_in_lens;
         theta_rx = perm(data3l.Angle_R_Tissue);
+    elseif Pars.recon_to == 2
+        tof_rt = perm (data3l.Time_T_Bone) + perm(data3l.Time_R_Bone) - delay_in_lens;
+        theta_rx = perm(data3l.Angle_R_Bone);
     elseif Pars.recon_to == 3
         tof_rt = perm (data3l.Time_T_Marrow) + perm(data3l.Time_R_Marrow) - delay_in_lens;
         theta_rx = perm(data3l.Angle_R_Marrow);

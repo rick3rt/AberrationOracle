@@ -6,7 +6,8 @@ function data = rt2_compute(P, mode)
         case 'LC' % lens corrected
             data = rt2_compute_tof_trace(P, 2);
         case 'AC' % aberration corrected
-            data = rt2_compute_tof_trace(P, 4);
+            to_layer = numel(P.medium_soundspeeds);
+            data = rt2_compute_tof_trace(P, to_layer);
         otherwise
             error('Unknown mode: %s', mode)
     end
@@ -21,7 +22,7 @@ function data = rt2_compute_tof_trace(P, to_layer)
     dist_se = vecnorm(v_piezo - v_source);
     tx_delay_lens = dist_se / P.medium_soundspeeds(1); % lens speed of sound
     delay_in_lens = min(tx_delay_lens);
-
+    
     % % determine depth per interface??
     % z_ints = cellfun(@(p) rt.util.segeval(p, P.x_pixel), P.medium_interfaces);
     % z_dist = diff([0 z_ints P.z_pixel]);
@@ -32,14 +33,15 @@ function data = rt2_compute_tof_trace(P, to_layer)
     % z_c0 = tof_tx_rt * P.c0;
     % v_pixel = [P.x_pixel; P.z_pixel];
     
-    if to_layer < numel(P.medium_soundspeeds)
-        tmp = rt2_compute_tof_trace(P, 4); % final 
-        tau = tmp.tof_round_trip;
-        taum = min(tau);
-        tau2 = taum - 2*P.lens_thickness / P.medium_soundspeeds(1);
-        z2 = tau2/2*P.medium_soundspeeds(2);
-        P.z_pixel = z2 + P.lens_thickness; 
-    end
+    % DONT 
+    % if to_layer < numel(P.medium_soundspeeds)
+    %     tmp = rt2_compute_tof_trace(P, numel(P.medium_soundspeeds)); % final 
+    %     tau = tmp.tof_round_trip;
+    %     taum = min(tau);
+    %     tau2 = taum - 2*P.lens_thickness / P.medium_soundspeeds(1);
+    %     z2 = tau2/2*P.medium_soundspeeds(2);
+    %     P.z_pixel = z2 + P.lens_thickness; 
+    % end
 
     % trace transmit
     [rays_tx, tof_tx, theta_tx] = rt.ray_bending(P, P.x_source, P.z_source, P.x_pixel, P.z_pixel, to_layer);
@@ -70,6 +72,7 @@ function data = rt2_compute_tof_trace(P, to_layer)
     data.rays_tx = rays_tx;
     data.rays_rx = rays_rx_all;
     data.tof_tx = tof_tx;
+    data.delay_in_lens = delay_in_lens;
     data.tof_rx = tof_rx_all;
     data.tof_round_trip = tof_round_trip;
     data.theta_tx = theta_tx; %
@@ -88,10 +91,10 @@ function data = rt2_compute_homogeneous(P)
         error('Pixel not under last interface!')
     end
 
-    tof_tx_rt = sum(z_dist ./ P.medium_soundspeeds); % need to add lens term?
-    z_c0 = tof_tx_rt * P.c0;
+    % tof_tx_rt = sum(z_dist ./ P.medium_soundspeeds); % need to add lens term?
+    % z_c0 = tof_tx_rt * P.c0;
 
-    v_pixel = [P.x_pixel; z_c0];
+    v_pixel = [P.x_pixel; P.z_pixel]; % z_c0];
     v_source = [P.x_source; P.z_source];
     v_piezo = [P.x_piezo; P.z_piezo];
 
