@@ -1,9 +1,9 @@
 function [TF, TF_all] = transmission_coeff(P, rays, go_forward)
+    % Compute the trnsmission coefficient for an interface intersection, given the acoustic impedance of the adjacent layers.
 
     TF_all = zeros(numel(rays) - 1, 1);
 
     transmission_factor = @(Z1, Z2, ti, to) 2 * Z2 * cos(ti) / (Z2 * cos(ti) + Z1 * cos(to));
-    % transmission_factor = @(Z1, Z2, ti, to) 2 * Z2 / (Z2 + Z1);
 
     if go_forward
         % TX

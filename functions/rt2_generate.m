@@ -1,13 +1,30 @@
 function [rf_data, rf_data_full] = rt2_generate(P, mode)
-
+    % [rf_data, rf_data_full] = rt2_generate(P, mode)
+    % Generate aberrated RF data for a given set of parameters.
+    %
+    % Computes the time of flight through the aberrating layers,
+    %   taking into account the speed of sound per layers, and
+    %   imposing Snell's law on each of the tissue interfaces.
+    %
+    % The generated RF data amplitude per channel is based on:
+    % - The incident angle at the transducer element, to take
+    %       into account the element directivity.
+    % - The transmission factor at each tissue interface.
+    % - The attenuation in each layer of the medium, based
+    %       on the frequency and the distance travelled in each layer.
+    %
+    % Optionally, the wavefront can be further aberrated by local speed
+    % of sound variations, defined as a fraction of variation in P.medium_sos_variation.
+    % To introduce 5% heterogeneity, set P.medium_sos_variation = 0.05.
+    %
     if ~exist('mode', 'var'); mode = 'AC'; end
 
-    %% % compute rays and time of flight
+    %% compute rays and time of flight
     data = rt2_compute(P, mode);
 
     %% Element dictivity
     pitch = P.lambda;
-    if isfield(P,'pitch'); pitch = P.pitch; end
+    if isfield(P, 'pitch'); pitch = P.pitch; end
     W = pitch * 0.9; % small kerf
     directivity_fun = @(theta) cos(theta) .* sinc(pi * W / pitch .* sin(theta));
 
@@ -22,26 +39,20 @@ function [rf_data, rf_data_full] = rt2_generate(P, mode)
     TF_rx = cellfun(@(rays) rt.raytheory.transmission_coeff(P, rays, false), data.rays_rx);
     TF_rt = TF_tx * TF_rx;
 
-
     %% add some wavespeed variation
-
-    % keyboard 
-% 
-
-%%
     sos_vals = P.medium_soundspeeds .* (1 + P.medium_sos_variation .* randn(size(P.medium_soundspeeds)));
     sos_vals(:, 1) = P.medium_soundspeeds(1);
 
-    ray_length_rx = cellfun(@(rays) [rays.length], data.rays_rx,'UniformOutput',false);
-    ray_length_rx = cat(1,ray_length_rx{:});
-    sos_vals_rx = P.medium_soundspeeds .*  (1 + P.medium_sos_variation .* randn(size(ray_length_rx)));
-    sos_vals_rx(:,1) =  P.medium_soundspeeds(1);
+    ray_length_rx = cellfun(@(rays) [rays.length], data.rays_rx, 'UniformOutput', false);
+    ray_length_rx = cat(1, ray_length_rx{:});
+    sos_vals_rx = P.medium_soundspeeds .* (1 + P.medium_sos_variation .* randn(size(ray_length_rx)));
+    sos_vals_rx(:, 1) = P.medium_soundspeeds(1);
 
     delay_in_lens = data.delay_in_lens;
 
     tof_tx = sum([data.rays_tx.length] ./ sos_vals) - delay_in_lens;
-    tof_rx = sum(ray_length_rx ./ sos_vals_rx,2);
-    tof_round_trip_aberrated = tof_tx+ tof_rx;
+    tof_rx = sum(ray_length_rx ./ sos_vals_rx, 2);
+    tof_round_trip_aberrated = tof_tx + tof_rx;
     tof_round_trip_aberrated = tof_round_trip_aberrated(:).';
     local_aberrration_time = tof_round_trip_aberrated - data.tof_round_trip;
 
@@ -67,7 +78,7 @@ function [rf_data, rf_data_full] = rt2_generate(P, mode)
     RF_pulse = repmat(image_pulse, P.num_elements, 1).';
     RF_pulse(N, 1) = 0; % pad with zeros
     if P.medium_sos_variation > 0
-        RF_pulse = rt.util.pulse_delaying_RF(RF_pulse, local_aberrration_time+DT, P.Fs);
+        RF_pulse = rt.util.pulse_delaying_RF(RF_pulse, local_aberrration_time + DT, P.Fs);
     end
 
     % apply 'real' attenuation etc.
@@ -82,12 +93,11 @@ function [rf_data, rf_data_full] = rt2_generate(P, mode)
     rf_data.t_max = t_max; % max time
 
     %% full RF based on time of flight mode
-    if P.medium_sos_variation > 0 
+    if P.medium_sos_variation > 0
         tof_round_trip = tof_round_trip_aberrated(:).';
     else
         tof_round_trip = data.tof_round_trip;
     end
-    
 
     t_max = max(tof_round_trip) * 1.2;
     t_vec = t_min:1 / P.Fs:t_max;
